@@ -12,11 +12,11 @@ The front-end of this project will be developed separately and will consume this
 
 * **Programming Language:** Java
 * **Back-end Framework:** Spring Boot
-* **Database:** (Specify your database here, e.g., PostgreSQL, MySQL, etc.)
+* **Database:** PostgreSQL / MySQL
 * **Dependency Management:** Maven
 * **API Documentation:** Swagger (OpenAPI)
 * **Security:** JWT (JSON Web Tokens)
-* **(Optional) AI:** Python (or another language) with TensorFlow/PyTorch
+* **(Optional) AI:** Python
 
 ---
 
@@ -24,7 +24,7 @@ The front-end of this project will be developed separately and will consume this
 
 Here you can check the current status of the API development. The modules are designed to be implemented in stages, following an agile development methodology.
 
-* [ ] **Module 1 - General CRUDs:** <mark>In progress</mark>
+* [ ] **Module 1 - General CRUDs:** _`In progress`_
     * User Management (Registration, Login, Profile)
     * Product Management
     * Order Management
