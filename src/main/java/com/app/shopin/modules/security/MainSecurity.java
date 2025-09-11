@@ -49,7 +49,7 @@ public class MainSecurity {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/login",
-                        "/api/auth/new",
+                        "/api/user/new",
                         "/api/email/send",
                         "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
