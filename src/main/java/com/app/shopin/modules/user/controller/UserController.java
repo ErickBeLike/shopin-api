@@ -4,7 +4,6 @@ import com.app.shopin.modules.user.dto.NewUserDTO;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
 import com.app.shopin.util.UserResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,7 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -40,14 +38,9 @@ public class UserController {
     @PostMapping(value = "/new", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserResponse> save(
             @Valid @ModelAttribute NewUserDTO newUserDTO,
-            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage,
-            HttpServletRequest request) {
-        // Construye el baseUrl dinámicamente:
-        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(request)
-                .replacePath(null)
-                .build()
-                .toUriString();
-        UserResponse respuesta = userService.save(newUserDTO, profileImage, baseUrl);
+            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
+        // Ya no necesitas construir el baseUrl
+        UserResponse respuesta = userService.save(newUserDTO, profileImage); // Se elimina el parámetro
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
@@ -55,16 +48,9 @@ public class UserController {
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long id,
             @Valid @ModelAttribute NewUserDTO newUserDTO,
-            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage,
-            HttpServletRequest request) {
-
-        // Construye el baseUrl (p.ej. http://localhost:8080)
-        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(request)
-                .replacePath(null)
-                .build()
-                .toUriString();
-
-        UserResponse response = userService.updateUser(id, newUserDTO, profileImage, baseUrl);
+            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
+        // Ya no necesitas construir el baseUrl
+        UserResponse response = userService.updateUser(id, newUserDTO, profileImage); // Se elimina el parámetro
         return ResponseEntity.ok(response);
     }
 
