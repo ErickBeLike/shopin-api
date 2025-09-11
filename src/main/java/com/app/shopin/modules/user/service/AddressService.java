@@ -1,6 +1,7 @@
 package com.app.shopin.modules.user.service;
 
 import com.app.shopin.modules.exception.CustomException;
+import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.dto.AddressDTO;
 import com.app.shopin.modules.user.entity.Address;
 import com.app.shopin.modules.user.entity.User;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +27,22 @@ public class AddressService {
 
     @Autowired
     private UserRepository userRepository;
+
+    private void checkOwnershipOrAdmin(Long ownerUserId, UserDetails currentUser) {
+        boolean isAdmin = currentUser.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
+
+        // 1. Hacemos un cast del UserDetails genérico a nuestra clase específica PrincipalUser
+        PrincipalUser principal = (PrincipalUser) currentUser;
+
+        // 2. "Desempaquetamos" la entidad User real
+        User user = principal.getUser();
+
+        // Ahora la comparación funciona porque estamos comparando Long con Long
+        if (!ownerUserId.equals(user.getUserId()) && !isAdmin) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a este recurso.");
+        }
+    }
 
     public AddressDTO addAddressToUser(Long userId, AddressDTO addressDTO) {
         // 1. Buscamos al usuario para asociarle la dirección
@@ -55,7 +73,10 @@ public class AddressService {
         return addressPage.map(this::mapToDTO); // .map() es una función de Page para convertir el contenido
     }
 
-    public List<AddressDTO> getAddressesByUserId(Long userId) {
+    public List<AddressDTO> getAddressesByUserId(Long userId, UserDetails currentUser) {
+        // Verificamos que el usuario que pide la lista sea el dueño O un admin
+        checkOwnershipOrAdmin(userId, currentUser);
+
         if (!userRepository.existsById(userId)) {
             throw new CustomException(HttpStatus.NOT_FOUND, "No se encontró el usuario con ID: " + userId);
         }
@@ -63,6 +84,15 @@ public class AddressService {
         return addresses.stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public AddressDTO getAddressById(Long addressId, UserDetails currentUser) {
+        Address address = findAddressById(addressId);
+
+        // Verificamos que el usuario que pide la dirección sea el dueño O un admin
+        checkOwnershipOrAdmin(address.getUser().getUserId(), currentUser);
+
+        return mapToDTO(address);
     }
 
     public AddressDTO updateAddress(Long addressId, AddressDTO addressDTO) {
@@ -91,6 +121,7 @@ public class AddressService {
 
     private AddressDTO mapToDTO(Address address) {
         return new AddressDTO(
+                address.getAddressId(),
                 address.getStreet(),
                 address.getInternalDetails(),
                 address.getCity(),

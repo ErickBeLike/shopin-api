@@ -15,18 +15,21 @@ public class PrincipalUser implements UserDetails {
     private Integer tokenVersion;
     private Collection<? extends GrantedAuthority> authorities;
 
-    public PrincipalUser(String userName, String password, Integer tokenVersion,  Collection<? extends GrantedAuthority> authorities) {
+    private User user;
+
+    public PrincipalUser(String userName, String password, Integer tokenVersion, Collection<? extends GrantedAuthority> authorities, User user) {
         this.userName = userName;
         this.password = password;
         this.tokenVersion = tokenVersion;
         this.authorities = authorities;
+        this.user = user;
     }
 
     public static PrincipalUser build(User user){
         List<GrantedAuthority> authorities =
                 user.getRoles().stream().map(rol -> new SimpleGrantedAuthority(rol
                         .getRolName().name())).collect(Collectors.toList());
-        return new PrincipalUser(user.getUserName(), user.getPassword(), user.getTokenVersion(), authorities);
+        return new PrincipalUser(user.getUserName(), user.getPassword(), user.getTokenVersion(), authorities, user);
     }
 
     public Integer getTokenVersion() {
@@ -68,4 +71,11 @@ public class PrincipalUser implements UserDetails {
         return true;
     }
 
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

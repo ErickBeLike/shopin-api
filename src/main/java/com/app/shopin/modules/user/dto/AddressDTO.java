@@ -4,12 +4,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record AddressDTO(
+        Long addressId,
         @NotBlank(message = "La calle no puede estar vacía")
         @Size(max = 200)
         String street,
 
         @Size(max = 100)
-        String internalDetails, // Este campo es opcional, por eso no lleva @NotBlank
+        String internalDetails,
 
         @NotBlank(message = "La ciudad no puede estar vacía")
         @Size(max = 100)

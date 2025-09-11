@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,9 +39,21 @@ public class AddressController {
     }
 
     @GetMapping("/users/{userId}/addresses")
-    public ResponseEntity<List<AddressDTO>> getAddressesByUserId(@PathVariable Long userId) {
-        List<AddressDTO> addresses = addressService.getAddressesByUserId(userId);
+    public ResponseEntity<List<AddressDTO>> getAddressesByUserId(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        List<AddressDTO> addresses = addressService.getAddressesByUserId(userId, currentUser);
         return ResponseEntity.ok(addresses);
+    }
+
+    @GetMapping("/addresses/{addressId}")
+    public ResponseEntity<AddressDTO> getAddressById(
+            @PathVariable Long addressId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        AddressDTO address = addressService.getAddressById(addressId, currentUser);
+        return ResponseEntity.ok(address);
     }
 
     @PutMapping("/addresses/{addressId}")
