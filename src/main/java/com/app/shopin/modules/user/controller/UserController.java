@@ -26,19 +26,19 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @GetMapping("/get")
+    @GetMapping
     public ResponseEntity<List<User>> getAllTheUsers() {
         List<User> users = userService.getAllTheUsers();
         return ResponseEntity.ok(users);
     }
 
-    @GetMapping("/get/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        User user = userService.getUserById(id);
+    @GetMapping("/{userId}")
+    public ResponseEntity<User> getUserById(@PathVariable Long userId) {
+        User user = userService.getUserById(userId);
         return ResponseEntity.ok(user);
     }
 
-    @PostMapping(value = "/new", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserResponse> save(
             @Valid @ModelAttribute NewUserDTO newUserDTO,
             @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
@@ -47,46 +47,61 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
-    @PutMapping(value = "/update/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserResponse> updateUser(
-            @PathVariable Long id,
+            @PathVariable Long userId,
             @Valid @ModelAttribute NewUserDTO newUserDTO,
             @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
         // Ya no necesitas construir el baseUrl
-        UserResponse response = userService.updateUser(id, newUserDTO, profileImage); // Se elimina el parámetro
+        UserResponse response = userService.updateUser(userId, newUserDTO, profileImage); // Se elimina el parámetro
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<Map<String, Boolean>> deleteUser(@PathVariable Long id) {
-        Map<String, Boolean> response = userService.deleteUser(id);
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Map<String, Boolean>> deleteUser(@PathVariable Long userId) {
+        Map<String, Boolean> response = userService.deleteUser(userId);
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/update/profile/{id}")
+    @PatchMapping("/{userId}")
     public ResponseEntity<UserResponse> updateUserProfile(
-            @PathVariable Long id,
+            @PathVariable Long userId,
             @Valid @RequestBody UpdateUserDataDTO userDataDTO) {
 
-        UserResponse response = userService.updateUserProfile(id, userDataDTO);
+        UserResponse response = userService.updateUserProfile(userId, userDataDTO);
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/update/username/{id}")
+    @PatchMapping(value = "/{userId}/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserResponse> updateUserImage(
+            @PathVariable Long userId,
+            @RequestParam("profileImage") MultipartFile profileImage) {
+
+        UserResponse response = userService.updateProfileImage(userId, profileImage);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{userId}/profile-image")
+    public ResponseEntity<UserResponse> deleteUserImage(@PathVariable Long userId) {
+        UserResponse response = userService.deleteProfileImage(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{userId}/username")
     public ResponseEntity<UserResponse> updateUsername(
-            @PathVariable Long id,
+            @PathVariable Long userId,
             @Valid @RequestBody UpdateUsernameDTO usernameDTO) {
 
-        UserResponse response = userService.updateUsername(id, usernameDTO);
+        UserResponse response = userService.updateUsername(userId, usernameDTO);
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/update/email/{id}")
+    @PatchMapping("/{userId}/email")
     public ResponseEntity<UserResponse> updateEmail(
-            @PathVariable Long id,
+            @PathVariable Long userId,
             @Valid @RequestBody UpdateEmailDTO emailDTO) {
 
-        UserResponse response = userService.updateEmail(id, emailDTO);
+        UserResponse response = userService.updateEmail(userId, emailDTO);
         return ResponseEntity.ok(response);
     }
 

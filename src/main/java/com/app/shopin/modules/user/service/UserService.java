@@ -64,6 +64,14 @@ public class UserService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró un usuario para el ID: " + id));
     }
 
+    // METHOD FOR GENERATE A AVATAR IMAGE
+    private String generateAvatarUrl(String firstName, String lastName) {
+        // Reemplazamos espacios para que la URL sea válida
+        String formattedName = (firstName + " " + lastName).replace(" ", "+");
+        // Construimos la URL con parámetros para color de fondo y texto
+        return "https://ui-avatars.com/api/?name=" + formattedName + "&background=random&color=fff";
+    }
+
     public UserResponse save(NewUserDTO dto,
                              MultipartFile profileImage) {
         // 1) Validaciones de existencia
@@ -118,10 +126,14 @@ public class UserService {
 
         // 5) Procesar imagen de perfil
         if (profileImage != null && !profileImage.isEmpty()) {
-            // El servicio ahora devuelve un mapa con la URL y el publicId
+            // Si se sube una imagen, se guarda en Cloudinary
             Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
             user.setProfilePictureUrl(fileInfo.get("url"));
-            user.setProfilePicturePublicId(fileInfo.get("publicId")); // ¡Guardamos el publicId!
+            user.setProfilePicturePublicId(fileInfo.get("publicId"));
+        } else {
+            // Si no, se genera el avatar y el publicId se deja nulo
+            user.setProfilePictureUrl(generateAvatarUrl(dto.getFirstName(), dto.getLastName()));
+            user.setProfilePicturePublicId(null); // Importante: no hay publicId para avatares generados
         }
 
         // 6) Persistir y devolver respuesta
@@ -195,22 +207,21 @@ public class UserService {
         user.setRoles(roles);
 
         // 6) Handle profile image (this is the key part)
-        // Lógica de actualización de imagen:
-        if (profileImage != null && !profileImage.isEmpty() && storageService.isImageFile(profileImage)) {
-            // Escenario 1: Se ha proporcionado una nueva imagen.
-            // Borra la imagen anterior si existe.
+        if (profileImage != null && !profileImage.isEmpty()) {
+            // Si se sube una nueva imagen, se borra la anterior de Cloudinary (si existe y no es un avatar)
             if (user.getProfilePicturePublicId() != null) {
                 storageService.deleteFile(user.getProfilePicturePublicId(), null);
             }
-            // Sube la nueva imagen y actualiza los campos del usuario.
+            // Se sube la nueva imagen
             Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
             user.setProfilePictureUrl(fileInfo.get("url"));
             user.setProfilePicturePublicId(fileInfo.get("publicId"));
+        } else if (user.getProfilePicturePublicId() == null) {
+            // Si no se sube imagen Y la actual es un avatar (publicId es nulo),
+            // se regenera por si cambiaron el nombre.
+            user.setProfilePictureUrl(generateAvatarUrl(dto.getFirstName(), dto.getLastName()));
         }
-
-        // Escenario 2: Si no se proporciona una nueva imagen,
-        // no se hace nada y la imagen anterior se mantiene.
-        // La lógica para esto no necesita un 'else' aquí.
+        // Si no se sube imagen y la que tiene es de Cloudinary, no se hace nada.
 
         // 7) Increment token version
         user.incrementTokenVersion();
@@ -259,6 +270,46 @@ public class UserService {
         userRepository.save(user);
 
         return new UserResponse("El perfil de " + user.getUserName() + " ha sido actualizado.");
+    }
+
+    public UserResponse updateProfileImage(Long id, MultipartFile profileImage) {
+        if (profileImage == null || profileImage.isEmpty()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "No se ha proporcionado una imagen.");
+        }
+
+        User user = findUserById(id);
+
+        // Si la imagen anterior era de Cloudinary (tiene publicId), la borramos
+        if (user.getProfilePicturePublicId() != null) {
+            storageService.deleteFile(user.getProfilePicturePublicId(), null);
+        }
+
+        // Guardamos la nueva imagen y actualizamos la entidad
+        Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+        user.setProfilePictureUrl(fileInfo.get("url"));
+        user.setProfilePicturePublicId(fileInfo.get("publicId"));
+
+        userRepository.save(user);
+        return new UserResponse("Imagen de perfil de " + user.getUserName() + " actualizada.");
+    }
+
+    public UserResponse deleteProfileImage(Long id) {
+        User user = findUserById(id);
+
+        // Si no hay publicId, ya está usando un avatar. No hay nada que hacer.
+        if (user.getProfilePicturePublicId() == null) {
+            return new UserResponse("El usuario ya está usando un avatar generado.");
+        }
+
+        // Si hay publicId, significa que es una imagen de Cloudinary. La borramos.
+        storageService.deleteFile(user.getProfilePicturePublicId(), null);
+
+        // Restauramos al avatar por defecto
+        user.setProfilePictureUrl(generateAvatarUrl(user.getFirstName(), user.getLastName()));
+        user.setProfilePicturePublicId(null); // Limpiamos el publicId
+
+        userRepository.save(user);
+        return new UserResponse("Imagen de perfil restaurada al avatar por defecto.");
     }
 
     // METHOD FOR UPDATE USER USERNAME
