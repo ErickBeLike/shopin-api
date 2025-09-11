@@ -1,6 +1,9 @@
 package com.app.shopin.modules.user.controller;
 
 import com.app.shopin.modules.user.dto.NewUserDTO;
+import com.app.shopin.modules.user.dto.UpdateEmailDTO;
+import com.app.shopin.modules.user.dto.UpdateUserDataDTO;
+import com.app.shopin.modules.user.dto.UpdateUsernameDTO;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
 import com.app.shopin.util.UserResponse;
@@ -59,4 +62,32 @@ public class UserController {
         Map<String, Boolean> response = userService.deleteUser(id);
         return ResponseEntity.ok(response);
     }
+
+    @PatchMapping("/update/profile/{id}")
+    public ResponseEntity<UserResponse> updateUserProfile(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserDataDTO userDataDTO) {
+
+        UserResponse response = userService.updateUserProfile(id, userDataDTO);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/update/username/{id}")
+    public ResponseEntity<UserResponse> updateUsername(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUsernameDTO usernameDTO) {
+
+        UserResponse response = userService.updateUsername(id, usernameDTO);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/update/email/{id}")
+    public ResponseEntity<UserResponse> updateEmail(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateEmailDTO emailDTO) {
+
+        UserResponse response = userService.updateEmail(id, emailDTO);
+        return ResponseEntity.ok(response);
+    }
+
 }
