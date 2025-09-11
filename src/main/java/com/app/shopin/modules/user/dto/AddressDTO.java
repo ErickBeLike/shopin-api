@@ -1,74 +1,29 @@
 package com.app.shopin.modules.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-public class AddressDTO {
-    @NotBlank
-    private String street;
-    private String internalDetails;
-    @NotBlank
-    private String city;
-    @NotBlank
-    private String state;
-    @NotBlank
-    private String postalCode;
-    @NotBlank
-    private String country;
+public record AddressDTO(
+        @NotBlank(message = "La calle no puede estar vacía")
+        @Size(max = 200)
+        String street,
 
-    public AddressDTO(String street, String internalDetails, String city, String state, String postalCode, String country) {
-        this.street = street;
-        this.internalDetails = internalDetails;
-        this.city = city;
-        this.state = state;
-        this.postalCode = postalCode;
-        this.country = country;
-    }
+        @Size(max = 100)
+        String internalDetails, // Este campo es opcional, por eso no lleva @NotBlank
 
-    public @NotBlank String getStreet() {
-        return street;
-    }
+        @NotBlank(message = "La ciudad no puede estar vacía")
+        @Size(max = 100)
+        String city,
 
-    public void setStreet(@NotBlank String street) {
-        this.street = street;
-    }
+        @NotBlank(message = "El estado no puede estar vacío")
+        @Size(max = 100)
+        String state,
 
-    public @NotBlank String getInternalDetails() {
-        return internalDetails;
-    }
+        @NotBlank(message = "El código postal no puede estar vacío")
+        @Size(max = 10)
+        String postalCode,
 
-    public void setInternalDetails(@NotBlank String internalDetails) {
-        this.internalDetails = internalDetails;
-    }
-
-    public @NotBlank String getCity() {
-        return city;
-    }
-
-    public void setCity(@NotBlank String city) {
-        this.city = city;
-    }
-
-    public @NotBlank String getState() {
-        return state;
-    }
-
-    public void setState(@NotBlank String state) {
-        this.state = state;
-    }
-
-    public @NotBlank String getPostalCode() {
-        return postalCode;
-    }
-
-    public void setPostalCode(@NotBlank String postalCode) {
-        this.postalCode = postalCode;
-    }
-
-    public @NotBlank String getCountry() {
-        return country;
-    }
-
-    public void setCountry(@NotBlank String country) {
-        this.country = country;
-    }
-}
+        @NotBlank(message = "El país no puede estar vacío")
+        @Size(max = 100)
+        String country
+) {}
