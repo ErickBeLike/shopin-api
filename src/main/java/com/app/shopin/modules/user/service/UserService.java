@@ -47,6 +47,14 @@ public class UserService {
     @Autowired
     StorageService storageService;
 
+    public List<User> getAllTheUsers() {
+        return userRepository.findAll();
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró un usuario para el ID: " + id));
+    }
 
     public UserResponse save(NewUserDTO dto,
                              MultipartFile profileImage,
@@ -104,15 +112,6 @@ public class UserService {
         // 6) Persistir y devolver respuesta
         userRepository.save(user);
         return new UserResponse(user.getUserName() + " ha sido creado");
-    }
-
-    public List<User> getAllTheUsers() {
-        return userRepository.findAll();
-    }
-
-    public User getUserById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró un usuario para el ID: " + id));
     }
 
     public UserResponse updateUser(Long id,
