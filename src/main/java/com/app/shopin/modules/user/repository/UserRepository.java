@@ -1,6 +1,6 @@
-package com.app.shopin.modules.security.repository;
+package com.app.shopin.modules.user.repository;
 
-import com.app.shopin.modules.security.entity.User;
+import com.app.shopin.modules.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

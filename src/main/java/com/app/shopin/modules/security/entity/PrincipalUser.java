@@ -1,5 +1,6 @@
 package com.app.shopin.modules.security.entity;
 
+import com.app.shopin.modules.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

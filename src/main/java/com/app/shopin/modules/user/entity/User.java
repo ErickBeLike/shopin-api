@@ -1,6 +1,7 @@
-package com.app.shopin.modules.security.entity;
+package com.app.shopin.modules.user.entity;
 
 // import com.app.shopin.entity.employee.Employee;
+import com.app.shopin.modules.security.entity.Rol;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
