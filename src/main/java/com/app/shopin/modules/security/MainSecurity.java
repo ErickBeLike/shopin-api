@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -43,14 +44,14 @@ public class MainSecurity {
         authenticationManager = builder.build();
         http.authenticationManager(authenticationManager);
 
-        http.csrf(csrf -> csrf.disable());
+        http.csrf(AbstractHttpConfigurer::disable);
         http.cors(Customizer.withDefaults());
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        http.authorizeHttpRequests(auth -> auth.requestMatchers("/auth/login",
-                        "/auth/new",
+        http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/login",
+                        "/api/auth/new",
                         "/api/email/send",
-                        "/auth/refresh").permitAll()
+                        "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
                         .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE")
                 .anyRequest().authenticated());
