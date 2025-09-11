@@ -8,6 +8,8 @@ import com.app.shopin.modules.user.repository.AddressRepository;
 import com.app.shopin.modules.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -24,9 +26,6 @@ public class AddressService {
     @Autowired
     private UserRepository userRepository;
 
-    /**
-     * Añade una nueva dirección a un usuario específico.
-     */
     public AddressDTO addAddressToUser(Long userId, AddressDTO addressDTO) {
         // 1. Buscamos al usuario para asociarle la dirección
         User user = userRepository.findById(userId)
@@ -51,9 +50,11 @@ public class AddressService {
         return mapToDTO(savedAddress);
     }
 
-    /**
-     * Obtiene todas las direcciones de un usuario.
-     */
+    public Page<AddressDTO> getAllAddresses(Pageable pageable) {
+        Page<Address> addressPage = addressRepository.findAll(pageable);
+        return addressPage.map(this::mapToDTO); // .map() es una función de Page para convertir el contenido
+    }
+
     public List<AddressDTO> getAddressesByUserId(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new CustomException(HttpStatus.NOT_FOUND, "No se encontró el usuario con ID: " + userId);
@@ -64,9 +65,6 @@ public class AddressService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Actualiza una dirección existente.
-     */
     public AddressDTO updateAddress(Long addressId, AddressDTO addressDTO) {
         Address address = findAddressById(addressId);
 
@@ -81,15 +79,10 @@ public class AddressService {
         return mapToDTO(updatedAddress);
     }
 
-    /**
-     * Elimina una dirección por su ID.
-     */
     public void deleteAddress(Long addressId) {
         Address address = findAddressById(addressId);
         addressRepository.delete(address);
     }
-
-    // --- Métodos privados de ayuda ---
 
     private Address findAddressById(Long addressId) {
         return addressRepository.findById(addressId)
