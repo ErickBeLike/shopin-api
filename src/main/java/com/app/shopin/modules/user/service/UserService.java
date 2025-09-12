@@ -2,6 +2,7 @@ package com.app.shopin.modules.user.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
+import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.dto.NewUserDTO;
 import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.enums.RolName;
@@ -18,6 +19,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +51,18 @@ public class UserService {
 
     @Autowired
     StorageService storageService;
+
+    private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
+        boolean isAdmin = currentUser.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
+
+        PrincipalUser principal = (PrincipalUser) currentUser;
+        User authenticatedUser = principal.getUser();
+
+        if (!targetUserId.equals(authenticatedUser.getUserId()) && !isAdmin) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción sobre otro usuario.");
+        }
+    }
 
     public List<User> getAllTheUsers() {
         return userRepository.findAll();
@@ -366,6 +380,30 @@ public class UserService {
         userRepository.save(user);
 
         return new UserResponse("Correo electrónico actualizado. Por seguridad, por favor inicie sesión de nuevo.");
+    }
+
+    public UserResponse changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = findUserById(userId);
+
+        // 1. Verificar que la contraseña antigua sea correcta
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "La contraseña actual es incorrecta.");
+        }
+
+        // 2. Validar la nueva contraseña
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "La nueva contraseña no puede estar vacía.");
+        }
+
+        // 3. Actualizar la contraseña
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        // 4. Invalidar todas las sesiones anteriores
+        user.incrementTokenVersion();
+
+        userRepository.save(user);
+
+        return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
     }
 
 }
