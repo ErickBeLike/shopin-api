@@ -47,4 +47,21 @@ public class EmailService {
 
         javaMailSender.send(mailMessage);
     }
+
+    public void sendReactivationEmail(String userEmail, String userName) {
+        String messageBody = String.format(
+                "¡Hola, %s!\n\n" +
+                        "Bienvenido/a de nuevo.\n\n" +
+                        "La solicitud para eliminar tu cuenta ha sido cancelada exitosamente. Tu cuenta está completamente activa y segura.\n\n" +
+                        "Nos alegra tenerte de vuelta.",
+                userName
+        );
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(userEmail);
+        mailMessage.setSubject("ShopIn - Tu cuenta ha sido reactivada");
+        mailMessage.setText(messageBody);
+
+        javaMailSender.send(mailMessage);
+    }
 }
