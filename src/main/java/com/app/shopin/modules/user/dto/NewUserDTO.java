@@ -1,4 +1,4 @@
-package com.app.shopin.modules.security.dto;
+package com.app.shopin.modules.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.multipart.MultipartFile;

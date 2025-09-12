@@ -1,8 +1,8 @@
 package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.security.entity.PrincipalUser;
-import com.app.shopin.modules.security.entity.User;
-import com.app.shopin.modules.security.repository.UserRepository;
+import com.app.shopin.modules.user.entity.User;
+import com.app.shopin.modules.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
