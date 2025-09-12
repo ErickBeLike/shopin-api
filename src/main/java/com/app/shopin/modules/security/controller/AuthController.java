@@ -3,7 +3,10 @@ package com.app.shopin.modules.security.controller;
 
 import com.app.shopin.modules.security.dto.JwtDTO;
 import com.app.shopin.modules.security.dto.LoginDTO;
+import com.app.shopin.modules.security.dto.PasswordResetDTO;
+import com.app.shopin.modules.security.dto.PasswordResetRequestDTO;
 import com.app.shopin.modules.security.service.AuthService;
+import com.app.shopin.util.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +22,18 @@ public class AuthController {
 
     @Autowired
     AuthService authService;
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<UserResponse> forgotPassword(@RequestBody PasswordResetRequestDTO request) {
+        UserResponse response = authService.requestPasswordReset(request.email());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<UserResponse> resetPassword(@Valid @RequestBody PasswordResetDTO request) {
+        UserResponse response = authService.resetPassword(request.code(), request.newPassword());
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/login")
     public ResponseEntity<JwtDTO> login(@Valid @RequestBody LoginDTO loginDTO){
