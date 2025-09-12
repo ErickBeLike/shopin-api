@@ -22,6 +22,7 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String profilePicturePublicId;
 
+    // THESE ATTRIBUTES ARE IMPORTANT FOR THE SECURITY MODULE
     @Column(nullable = false, unique = true)
     private String userName;
     @Column(nullable = false, unique = true)
@@ -29,13 +30,26 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
-    private Integer tokenVersion = 0;
-
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(joinColumns = @JoinColumn(name = "user_id"),
-    inverseJoinColumns = @JoinColumn(name = "rol_id"))
+            inverseJoinColumns = @JoinColumn(name = "rol_id"))
     private Set<Rol> roles = new HashSet<>();
+
+    @Column(nullable = false)
+    private Integer tokenVersion = 0;
+    //---
+
+    @Column(length = 100)
+    private String firstName;
+
+    @Column(length = 100)
+    private String lastName;
+
+    @Column(length = 20)
+    private String phone;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Address> addresses = new HashSet<>();
 
     // @OneToOne(mappedBy = "user")  // Relación bidireccional
     // private Employee employee;
@@ -104,6 +118,38 @@ public class User {
     /** Llamar justo antes de guardar cuando cambies email/password/username */
     public void incrementTokenVersion() {
         this.tokenVersion++;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Set<Address> getAddresses() {
+        return addresses;
+    }
+
+    public void setAddresses(Set<Address> addresses) {
+        this.addresses = addresses;
     }
 
     public Set<Rol> getRoles() {

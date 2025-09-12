@@ -3,7 +3,6 @@ package com.app.shopin.modules.user.dto;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
 import java.util.Set;
 
 public class NewUserDTO {
@@ -16,18 +15,33 @@ public class NewUserDTO {
     private String password;
     private Set<String> roles;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    @NotBlank(message = "El nombre es obligatorio")
+    private String firstName;
+
+    @NotBlank(message = "El apellido es obligatorio")
+    private String lastName;
+
+    private String phone;
 
     public NewUserDTO() {
     }
 
-    public NewUserDTO(MultipartFile profileImage, String userName, String email, String password, Set<String> roles) {
+    public NewUserDTO(MultipartFile profileImage,
+                      String userName,
+                      String email,
+                      String password,
+                      Set<String> roles,
+                      String firstName,
+                      String lastName,
+                      String phone) {
         this.profileImage = profileImage;
         this.userName = userName;
         this.email = email;
         this.password = password;
         this.roles = roles;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phone = phone;
     }
 
     public @NotBlank(message = "nombre de usuario obligatorio") String getUserName() {
@@ -62,6 +76,30 @@ public class NewUserDTO {
         this.roles = roles;
     }
 
+    public @NotBlank(message = "El nombre es obligatorio") String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(@NotBlank(message = "El nombre es obligatorio") String firstName) {
+        this.firstName = firstName;
+    }
+
+    public @NotBlank(message = "El apellido es obligatorio") String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(@NotBlank(message = "El apellido es obligatorio") String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
     public MultipartFile getProfileImage() {
         return profileImage;
     }
@@ -70,19 +108,4 @@ public class NewUserDTO {
         this.profileImage = profileImage;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

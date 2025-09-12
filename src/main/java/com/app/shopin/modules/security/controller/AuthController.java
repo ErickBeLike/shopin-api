@@ -13,7 +13,7 @@ import java.text.ParseException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @CrossOrigin
 public class AuthController {
 
