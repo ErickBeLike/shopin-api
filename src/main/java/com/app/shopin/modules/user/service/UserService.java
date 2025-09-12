@@ -240,8 +240,6 @@ public class UserService {
         // 7) Increment token version
         user.incrementTokenVersion();
 
-        // 8) Update timestamp and save
-        user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
         // 9) Response
@@ -382,7 +380,9 @@ public class UserService {
         return new UserResponse("Correo electrónico actualizado. Por seguridad, por favor inicie sesión de nuevo.");
     }
 
-    public UserResponse changePassword(Long userId, String oldPassword, String newPassword) {
+    public UserResponse changePassword(Long userId, String oldPassword, String newPassword, UserDetails currentUser) {
+        checkOwnershipOrAdmin(userId, currentUser);
+
         User user = findUserById(userId);
 
         // 1. Verificar que la contraseña antigua sea correcta
