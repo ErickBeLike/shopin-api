@@ -37,6 +37,12 @@ public class User {
 
     @Column(nullable = false)
     private Integer tokenVersion = 0;
+
+    @Column(nullable = true)
+    private String passwordResetCode;
+
+    @Column(nullable = true)
+    private LocalDateTime resetCodeExpiration;
     //---
 
     @Column(length = 100)
@@ -158,6 +164,22 @@ public class User {
 
     public void setRoles(Set<Rol> roles) {
         this.roles = roles;
+    }
+
+    public String getPasswordResetCode() {
+        return passwordResetCode;
+    }
+
+    public void setPasswordResetCode(String passwordResetCode) {
+        this.passwordResetCode = passwordResetCode;
+    }
+
+    public LocalDateTime getResetCodeExpiration() {
+        return resetCodeExpiration;
+    }
+
+    public void setResetCodeExpiration(LocalDateTime resetCodeExpiration) {
+        this.resetCodeExpiration = resetCodeExpiration;
     }
 
     public String getProfilePictureUrl() {

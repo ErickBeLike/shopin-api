@@ -1,9 +1,6 @@
 package com.app.shopin.modules.user.controller;
 
-import com.app.shopin.modules.user.dto.NewUserDTO;
-import com.app.shopin.modules.user.dto.UpdateEmailDTO;
-import com.app.shopin.modules.user.dto.UpdateUserDataDTO;
-import com.app.shopin.modules.user.dto.UpdateUsernameDTO;
+import com.app.shopin.modules.user.dto.*;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
 import com.app.shopin.util.UserResponse;
@@ -12,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -102,6 +101,22 @@ public class UserController {
             @Valid @RequestBody UpdateEmailDTO emailDTO) {
 
         UserResponse response = userService.updateEmail(userId, emailDTO);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{userId}/change-password")
+    public ResponseEntity<UserResponse> changePassword(
+            @PathVariable Long userId,
+            @Valid @RequestBody ChangePasswordDTO changePasswordDTO,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        // El controlador ahora solo pasa los datos al servicio. Limpio y simple.
+        UserResponse response = userService.changePassword(
+                userId,
+                changePasswordDTO.oldPassword(),
+                changePasswordDTO.newPassword(),
+                currentUser
+        );
         return ResponseEntity.ok(response);
     }
 
