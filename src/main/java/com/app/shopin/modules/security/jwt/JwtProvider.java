@@ -146,4 +146,17 @@ public class JwtProvider {
                 .parseSignedClaims(token);
         return jws.getPayload().getExpiration().toInstant().getEpochSecond();
     }
+
+    public String generateTokenWithExpiration(String username, long expirationInMillis) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", username);
+        // No añadimos roles ni tokenVersion a este token simple
+        claims.put("iat", Instant.now().getEpochSecond());
+        claims.put("exp", Instant.now().plusMillis(expirationInMillis).getEpochSecond());
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .signWith(getSecretKey())
+                .compact();
+    }
 }

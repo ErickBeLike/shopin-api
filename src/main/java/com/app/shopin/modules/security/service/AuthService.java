@@ -1,6 +1,7 @@
 package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.exception.CustomException;
+import com.app.shopin.modules.security.dto.ValidationResponseDTO;
 import com.app.shopin.services.mailtrap.EmailService;
 import com.app.shopin.util.UserResponse;
 import org.slf4j.Logger;
@@ -54,6 +55,7 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
+    private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
 
     public Optional<User> getByUserName(String userName) {
         return userRepository.findByUserName(userName);
@@ -83,19 +85,36 @@ public class AuthService {
         return new UserResponse("Se ha enviado un código de restablecimiento a tu correo.");
     }
 
-    public UserResponse resetPassword(String code, String newPassword) {
-        // 1. Buscar al usuario por el código de reseteo
+    public ValidationResponseDTO validateResetCode(String code) {
+        // 1. Buscar al usuario por el código
         User user = userRepository.findByPasswordResetCode(code)
                 .orElseThrow(() -> new CustomException(HttpStatus.BAD_REQUEST, "El código de restablecimiento es inválido."));
 
         // 2. Verificar que el código no haya expirado
         if (user.getResetCodeExpiration().isBefore(LocalDateTime.now())) {
-            // Limpiamos el código expirado para que no se pueda reintentar
             user.setPasswordResetCode(null);
             user.setResetCodeExpiration(null);
             userRepository.save(user);
             throw new CustomException(HttpStatus.BAD_REQUEST, "El código de restablecimiento ha expirado.");
         }
+
+        // 3. Generar el token de validación temporal
+        String validationToken = jwtProvider.generateTokenWithExpiration(user.getUserName(), VALIDATION_TOKEN_DURATION);
+
+        return new ValidationResponseDTO(validationToken, "Código validado correctamente.");
+    }
+
+    public UserResponse setNewPassword(String validationToken, String newPassword) {
+        // 1. Validar el token temporal
+        if (!jwtProvider.validateToken(validationToken)) {
+            // Aquí podríamos diferenciar si está malformado o si solo expiró
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "El pase de validación es inválido o ha expirado.");
+        }
+
+        // 2. Extraer el username del token y buscar al usuario
+        String username = jwtProvider.getNombreUsuarioFromToken(validationToken);
+        User user = userRepository.findByUserName(username)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Usuario no encontrado."));
 
         // 3. Validar y actualizar la nueva contraseña
         if (newPassword == null || newPassword.trim().isEmpty()) {
@@ -107,10 +126,10 @@ public class AuthService {
         user.setPasswordResetCode(null);
         user.setResetCodeExpiration(null);
 
-        // 5. Invalidar todas las sesiones anteriores por seguridad
+        // 5. Invalidar todas las sesiones anteriores
         user.incrementTokenVersion();
 
-        // 6. Guardar el usuario con la nueva contraseña
+        // 6. Guardar el usuario
         userRepository.save(user);
 
         return new UserResponse("Tu contraseña ha sido actualizada correctamente. Por favor, inicia sesión de nuevo.");
