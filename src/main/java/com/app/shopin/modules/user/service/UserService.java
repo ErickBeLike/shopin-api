@@ -25,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -252,11 +253,22 @@ public class UserService {
         );
     }
 
-    public Map<String, Boolean> deleteUser(Long id) {
+    public Map<String, Boolean> softDeleteUser(Long id, UserDetails currentUser) {
+        // 1. Verifica los permisos antes de continuar
+        checkOwnershipOrAdmin(id, currentUser);
+
+        // 2. Obtiene el usuario
         User user = findUserById(id);
 
-        userRepository.delete(user);
+        // 3. Realiza el "soft delete"
+        user.setDeletedAt(LocalDateTime.now());
 
+        // 4. Invalida el token para que ya no pueda usarlo
+        user.incrementTokenVersion();
+
+        userRepository.save(user);
+
+        // 5. Envía la notificación
         emailService.sendDeletionNoticeEmail(user.getEmail(), user.getFirstName());
 
         Map<String, Boolean> response = new HashMap<>();
