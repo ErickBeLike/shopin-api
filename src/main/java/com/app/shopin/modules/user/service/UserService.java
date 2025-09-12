@@ -14,6 +14,7 @@ import com.app.shopin.modules.user.dto.UpdateUsernameDTO;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
 import com.app.shopin.services.cloudinary.StorageService;
+import com.app.shopin.services.mailtrap.EmailService;
 import com.app.shopin.util.UserResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,9 @@ public class UserService {
 
     @Autowired
     StorageService storageService;
+
+    @Autowired
+    private EmailService emailService;
 
     private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
         boolean isAdmin = currentUser.getAuthorities().stream()
@@ -249,15 +253,11 @@ public class UserService {
     }
 
     public Map<String, Boolean> deleteUser(Long id) {
-
         User user = findUserById(id);
 
-        // Borra la imagen de Cloudinary antes de eliminar el usuario
-        if (user.getProfilePicturePublicId() != null) {
-            storageService.deleteFile(user.getProfilePicturePublicId(), null);
-        }
-
         userRepository.delete(user);
+
+        emailService.sendDeletionNoticeEmail(user.getEmail(), user.getFirstName());
 
         Map<String, Boolean> response = new HashMap<>();
         response.put("eliminado", Boolean.TRUE);

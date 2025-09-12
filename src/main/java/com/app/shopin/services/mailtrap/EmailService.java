@@ -30,4 +30,21 @@ public class EmailService {
         // Envía el correo
         javaMailSender.send(mailMessage);
     }
+
+    public void sendDeletionNoticeEmail(String userEmail, String userName) {
+        String messageBody = String.format(
+                "Hola, %s.\n\nLamentamos que te vayas.\n\n" +
+                        "Hemos recibido una solicitud para eliminar tu cuenta. Será eliminada permanentemente en 15 días.\n\n" +
+                        "Si cambias de opinión, simplemente inicia sesión en tu cuenta antes de que pasen los 15 días y la solicitud de eliminación se cancelará automáticamente.\n\n" +
+                        "Si no solicitaste esto, te recomendamos cambiar tu contraseña de inmediato.",
+                userName
+        );
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(userEmail);
+        mailMessage.setSubject("ShopIn - Tu cuenta será eliminada pronto");
+        mailMessage.setText(messageBody);
+
+        javaMailSender.send(mailMessage);
+    }
 }
