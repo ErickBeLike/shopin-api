@@ -4,6 +4,8 @@ package com.app.shopin.modules.user.entity;
 import com.app.shopin.modules.security.entity.Rol;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -11,6 +13,8 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@SQLDelete(sql = "UPDATE users SET deleted_at = NOW() WHERE user_id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,6 +68,8 @@ public class User {
     private LocalDateTime createdAt;
     @Column()
     private LocalDateTime updatedAt;
+    @Column
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -220,5 +226,13 @@ public class User {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

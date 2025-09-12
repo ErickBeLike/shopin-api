@@ -57,8 +57,11 @@ public class UserController {
     }
 
     @DeleteMapping("/{userId}")
-    public ResponseEntity<Map<String, Boolean>> deleteUser(@PathVariable Long userId) {
-        Map<String, Boolean> response = userService.deleteUser(userId);
+    public ResponseEntity<Map<String, Boolean>> softDeleteUser(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails currentUser) { // <--- Inyecta el usuario autenticado
+
+        Map<String, Boolean> response = userService.softDeleteUser(userId, currentUser); // <--- Pasa el usuario autenticado al servicio
         return ResponseEntity.ok(response);
     }
 

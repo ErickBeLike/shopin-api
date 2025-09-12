@@ -92,6 +92,34 @@ public class JwtProvider {
         }
     }
 
+    public boolean validateTokenAndVersion(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            Integer tokenVersionFromJwt = claims.get("tv", Integer.class);
+            String username = claims.getSubject();
+
+            if (tokenVersionFromJwt == null || username == null) {
+                return false;
+            }
+
+            User user = userRepository.findByUserName(username)
+                    .orElse(null);
+
+            if (user == null || !tokenVersionFromJwt.equals(user.getTokenVersion())) {
+                return false;
+            }
+
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     /**
      * Si el token expiró, intenta refrescarlo:
      *  - Parsea los claims

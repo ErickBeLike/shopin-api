@@ -36,7 +36,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String token = getToken(req);
-            if (token != null && jwtProvider.validateToken(token) && !tokenBlacklist.contains(token)) {
+            // Usamos el nuevo método que valida all de una vez
+            if (token != null && jwtProvider.validateTokenAndVersion(token) && !tokenBlacklist.contains(token)) {
                 String nombreUsuario = jwtProvider.getNombreUsuarioFromToken(token);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(nombreUsuario);
 
