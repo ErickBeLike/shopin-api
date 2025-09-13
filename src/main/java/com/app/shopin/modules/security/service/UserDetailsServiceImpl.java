@@ -40,7 +40,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             userRepository.reactivateUserById(userToReactivate.getUserId());
 
             // 4. Envía el correo de reactivación
-            emailService.sendReactivationEmail(userToReactivate.getEmail(), userToReactivate.getUserName());
+            emailService.sendReactivationEmail(userToReactivate);
 
             // 5. Retorna el usuario reactivado para el login
             // Debes obtener la instancia reactivada para asegurarte de que el estado es correcto
