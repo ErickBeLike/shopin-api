@@ -269,7 +269,7 @@ public class UserService {
         userRepository.save(user);
 
         // 5. Envía la notificación
-        emailService.sendDeletionNoticeEmail(user.getEmail(), user.getFirstName());
+        emailService.sendDeletionNoticeEmail(user);
 
         Map<String, Boolean> response = new HashMap<>();
         response.put("eliminado", Boolean.TRUE);

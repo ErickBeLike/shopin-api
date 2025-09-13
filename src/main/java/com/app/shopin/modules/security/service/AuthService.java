@@ -2,6 +2,7 @@ package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.dto.ValidationResponseDTO;
+import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.services.mailtrap.EmailService;
 import com.app.shopin.util.UserResponse;
 import org.slf4j.Logger;
@@ -80,7 +81,7 @@ public class AuthService {
         userRepository.save(user);
 
         // 4. Enviar el correo
-        emailService.sendPasswordResetCode(user.getEmail(), code);
+        emailService.sendPasswordResetCode(user, code);
 
         return new UserResponse("Se ha enviado un código de restablecimiento a tu correo.");
     }
@@ -139,6 +140,16 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDTO.getUsernameOrEmail(), loginDTO.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
+        User user = principal.getUser();
+
+        try {
+            emailService.sendLoginNotification(user);
+        } catch (Exception e) {
+            log.error("Error al enviar el correo de notificación de login para el usuario: " + user.getEmail(), e);
+        }
+
         String jwt = jwtProvider.generateToken(authentication);
 
         return new JwtDTO(jwt);
