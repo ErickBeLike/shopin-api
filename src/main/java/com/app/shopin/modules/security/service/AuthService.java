@@ -56,6 +56,7 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
+    public record TokenPair(String accessToken, String refreshToken) {}
     private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
 
     public Optional<User> getByUserName(String userName) {
@@ -136,7 +137,7 @@ public class AuthService {
         return new UserResponse("Tu contraseña ha sido actualizada correctamente. Por favor, inicia sesión de nuevo.");
     }
 
-    public JwtDTO login(LoginDTO loginDTO) {
+    public TokenPair login(LoginDTO loginDTO) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDTO.getUsernameOrEmail(), loginDTO.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -150,14 +151,15 @@ public class AuthService {
             log.error("Error al enviar el correo de notificación de login para el usuario: " + user.getEmail(), e);
         }
 
-        String jwt = jwtProvider.generateToken(authentication);
+        String accessToken = jwtProvider.generateAccessToken(authentication);
+        String refreshToken = jwtProvider.generateRefreshToken(authentication);
 
-        return new JwtDTO(jwt);
+        return new TokenPair(accessToken, refreshToken);
     }
 
-    public JwtDTO refresh(JwtDTO jwtDTO) throws ParseException {
-        String token = jwtProvider.refreshToken(jwtDTO);
-        return new JwtDTO(token);
+    public JwtDTO refresh(String refreshToken) throws ParseException {
+        String newAccessToken = jwtProvider.refreshAccessToken(refreshToken);
+        return new JwtDTO(newAccessToken);
     }
 
     public void logout(String token) {

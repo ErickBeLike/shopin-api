@@ -1,7 +1,6 @@
 package com.app.shopin.modules.security.jwt;
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.JwtDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
@@ -11,11 +10,11 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.text.ParseException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -27,8 +26,10 @@ public class JwtProvider {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration}")
-    private int expiration; // en segundos
+    @Value("${jwt.accessToken.expiration}")
+    private int accessTokenExpiration; // en segundos
+    @Value("${jwt.refreshToken.expiration}")
+    private int refreshTokenExpiration; // en segundos
 
     @Autowired
     private UserRepository userRepository;
@@ -48,7 +49,7 @@ public class JwtProvider {
      *  - tv (tokenVersion de la entidad User)
      *  - iat / exp
      */
-    public String generateToken(Authentication authentication) {
+    public String generateAccessToken(Authentication authentication) {
         PrincipalUser principalUser = (PrincipalUser) authentication.getPrincipal();
 
         List<String> roles = principalUser.getAuthorities().stream()
@@ -60,12 +61,46 @@ public class JwtProvider {
         claims.put("roles", roles);
         claims.put("tv", principalUser.getTokenVersion());       // <-- tokenVersion
         claims.put("iat", Instant.now().getEpochSecond());
-        claims.put("exp", Instant.now().plusSeconds(expiration).getEpochSecond());
+        claims.put("exp", Instant.now().plusSeconds(accessTokenExpiration).getEpochSecond());
 
         return Jwts.builder()
                 .setClaims(claims)
                 .signWith(getSecretKey())
                 .compact();
+    }
+
+    public String generateRefreshToken(Authentication authentication) {
+        PrincipalUser principalUser = (PrincipalUser) authentication.getPrincipal();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", principalUser.getUsername());
+        claims.put("iat", Instant.now().getEpochSecond());
+        // --- Usa la expiración del refresh token ---
+        claims.put("exp", Instant.now().plusSeconds(refreshTokenExpiration).getEpochSecond());
+
+        return Jwts.builder().setClaims(claims).signWith(getSecretKey()).compact();
+    }
+
+    public String refreshAccessToken(String refreshToken) {
+        try {
+            Claims claims = getAllClaimsFromToken(refreshToken);
+            String username = claims.getSubject();
+
+            User user = userRepository.findByUserName(username)
+                    .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+            // Recreamos el objeto Authentication para generar un nuevo Access Token
+            PrincipalUser principal = PrincipalUser.build(user);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    principal, null, principal.getAuthorities());
+
+            // Generamos y devolvemos un nuevo Access Token
+            return generateAccessToken(authentication);
+
+        } catch (ExpiredJwtException eje) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Refresh token expirado. Por favor, inicie sesión de nuevo.");
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Refresh token inválido.");
+        }
     }
 
     /**
@@ -110,60 +145,9 @@ public class JwtProvider {
             User user = userRepository.findByUserName(username)
                     .orElse(null);
 
-            if (user == null || !tokenVersionFromJwt.equals(user.getTokenVersion())) {
-                return false;
-            }
-
-            return true;
+            return user != null && tokenVersionFromJwt.equals(user.getTokenVersion());
         } catch (JwtException | IllegalArgumentException e) {
             return false;
-        }
-    }
-
-    /**
-     * Si el token expiró, intenta refrescarlo:
-     *  - Parsea los claims
-     *  - Compara el 'tv' en el token con el tokenVersion actual en BD
-     *  - Si coincide, renueva iat/exp y devuelve un token nuevo
-     *  - Si no coincide, lanza excepción para obligar re-login
-     */
-    public String refreshToken(JwtDTO jwtDto) throws ParseException {
-        try {
-            // si NO está expirado, no refrescamos
-            getAllClaimsFromToken(jwtDto.getToken());
-            return null;
-        } catch (ExpiredJwtException eje) {
-            Claims claims = eje.getClaims();
-
-            // 1) extraer userId o username
-            String username = claims.getSubject();
-            Integer tvInToken = claims.get("tv", Integer.class);
-
-            // 2) leer usuario de BD
-            User user = userRepository.findByUserName(username)
-                    .orElseThrow(() -> new CustomException(
-                            HttpStatus.UNAUTHORIZED,
-                            "Usuario no encontrado"
-                    ));
-
-            // 3) comparar versiones
-            if (!tvInToken.equals(user.getTokenVersion())) {
-                throw new CustomException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Sus credenciales cambiaron. Vuelva a iniciar sesión."
-                );
-            }
-
-            // 4) renovar fechas
-            Instant now = Instant.now();
-            claims.put("iat", now.getEpochSecond());
-            claims.put("exp", now.plusSeconds(expiration).getEpochSecond());
-            // 'tv' permanece igual en claims
-
-            return Jwts.builder()
-                    .setClaims(claims)
-                    .signWith(getSecretKey())
-                    .compact();
         }
     }
 
