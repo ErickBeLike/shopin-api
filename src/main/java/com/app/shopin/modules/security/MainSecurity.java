@@ -2,6 +2,8 @@ package com.app.shopin.modules.security;
 
 import com.app.shopin.modules.security.jwt.JwtEntryPoint;
 import com.app.shopin.modules.security.jwt.JwtTokenFilter;
+import com.app.shopin.modules.security.jwt.OAuth2LoginSuccessHandler;
+import com.app.shopin.modules.security.service.CustomOAuth2UserService;
 import com.app.shopin.modules.security.service.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -36,6 +38,11 @@ public class MainSecurity {
     @Autowired
     JwtTokenFilter jwtTokenFilter;
 
+    @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
+    @Autowired
+    private OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+
     AuthenticationManager authenticationManager;
 
     @Bean
@@ -56,7 +63,15 @@ public class MainSecurity {
                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
                 .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE")
                 .anyRequest().authenticated());
+
         http.exceptionHandling(exc -> exc.authenticationEntryPoint(jwtEntryPoint));
+        http.oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService) // Aquí le dices que use tu servicio
+                )
+                .successHandler(oAuth2LoginSuccessHandler)
+        );
+
         http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
