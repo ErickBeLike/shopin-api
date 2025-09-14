@@ -25,6 +25,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -84,10 +86,34 @@ public class UserService {
 
     // METHOD FOR GENERATE A AVATAR IMAGE
     private String generateAvatarUrl(String firstName, String lastName) {
-        // Reemplazamos espacios para que la URL sea válida
-        String formattedName = (firstName + " " + lastName).replace(" ", "+");
-        // Construimos la URL con parámetros para color de fondo y texto
-        return "https://ui-avatars.com/api/?name=" + formattedName + "&background=random&color=fff";
+        // 1. Obtenemos solo el primer nombre y el primer apellido, en caso de que haya más de uno.
+        // Usamos un bloque try-catch por si los campos vienen nulos o vacíos.
+        String primerNombre = "";
+        if (firstName != null && !firstName.isEmpty()) {
+            primerNombre = firstName.split(" ")[0];
+        }
+
+        String primerApellido = "";
+        if (lastName != null && !lastName.isEmpty()) {
+            primerApellido = lastName.split(" ")[0];
+        }
+
+        // 2. Creamos la cadena específica que queremos para las iniciales
+        String nombreParaAvatar = (primerNombre + " " + primerApellido).trim(); // "Raúl Ocasio"
+
+        // 3. Codificamos esa cadena específica para la URL
+        String encodedName = URLEncoder.encode(nombreParaAvatar, StandardCharsets.UTF_8);
+
+        return "https://ui-avatars.com/api/?name=" + encodedName + "&background=random&color=fff";
+    }
+
+    private Map<String, String> generateAndUploadAvatar(String firstName, String lastName) {
+        try {
+            String avatarUrl = generateAvatarUrl(firstName, lastName);
+            return storageService.uploadFromUrl(avatarUrl, "profileimages");
+        } catch (Exception e) {
+            return Collections.emptyMap(); // Devuelve un mapa vacío en caso de error
+        }
     }
 
     public UserResponse save(NewUserDTO dto,
@@ -120,7 +146,6 @@ public class UserService {
             user.setPhone(dto.getPhone());
         }
 
-
         // 4) Asignar roles
         Set<Rol> roles = new HashSet<>();
         if (dto.getRoles() == null || dto.getRoles().isEmpty()) {
@@ -144,17 +169,24 @@ public class UserService {
 
         // 5) Procesar imagen de perfil
         if (profileImage != null && !profileImage.isEmpty()) {
-            // Si se sube una imagen, se guarda en Cloudinary
-            Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+            try {
+                // Intenta subir la imagen proporcionada
+                Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+                user.setProfilePictureUrl(fileInfo.get("url"));
+                user.setProfilePicturePublicId(fileInfo.get("publicId"));
+            } catch (Exception e) {
+                // Fallback: Si la subida falla, genera y sube un avatar
+                Map<String, String> fileInfo = generateAndUploadAvatar(dto.getFirstName(), dto.getLastName());
+                user.setProfilePictureUrl(fileInfo.get("url"));
+                user.setProfilePicturePublicId(fileInfo.get("publicId"));
+            }
+        } else {
+            // Si no se proporciona imagen, genera y sube un avatar
+            Map<String, String> fileInfo = generateAndUploadAvatar(dto.getFirstName(), dto.getLastName());
             user.setProfilePictureUrl(fileInfo.get("url"));
             user.setProfilePicturePublicId(fileInfo.get("publicId"));
-        } else {
-            // Si no, se genera el avatar y el publicId se deja nulo
-            user.setProfilePictureUrl(generateAvatarUrl(dto.getFirstName(), dto.getLastName()));
-            user.setProfilePicturePublicId(null); // Importante: no hay publicId para avatares generados
         }
 
-        // 6) Persistir y devolver respuesta
         userRepository.save(user);
         return new UserResponse(user.getUserName() + " ha sido creado");
     }
@@ -226,31 +258,37 @@ public class UserService {
 
         // 6) Handle profile image (this is the key part)
         if (profileImage != null && !profileImage.isEmpty()) {
-            // Si se sube una nueva imagen, se borra la anterior de Cloudinary (si existe y no es un avatar)
-            if (user.getProfilePicturePublicId() != null) {
-                storageService.deleteFile(user.getProfilePicturePublicId(), null);
+            try {
+                // Si se sube una nueva imagen, borra la anterior de Cloudinary (si existe)
+                if (user.getProfilePicturePublicId() != null) {
+                    storageService.deleteFile(user.getProfilePicturePublicId(), null);
+                }
+                // Sube la nueva imagen
+                Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+                user.setProfilePictureUrl(fileInfo.get("url"));
+                user.setProfilePicturePublicId(fileInfo.get("publicId"));
+            } catch (Exception e) {
+                // Fallback: Si la subida falla, genera un avatar (no borra el anterior en este caso)
+                Map<String, String> fileInfo = generateAndUploadAvatar(dto.getFirstName(), dto.getLastName());
+                user.setProfilePictureUrl(fileInfo.get("url"));
+                user.setProfilePicturePublicId(fileInfo.get("publicId"));
             }
-            // Se sube la nueva imagen
-            Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
-            user.setProfilePictureUrl(fileInfo.get("url"));
-            user.setProfilePicturePublicId(fileInfo.get("publicId"));
-        } else if (user.getProfilePicturePublicId() == null) {
-            // Si no se sube imagen Y la actual es un avatar (publicId es nulo),
-            // se regenera por si cambiaron el nombre.
-            user.setProfilePictureUrl(generateAvatarUrl(dto.getFirstName(), dto.getLastName()));
+        } else {
+            // Si no se sube imagen Y la actual es un avatar temporal (publicId es nulo),
+            // se "actualiza" a un avatar permanente en Cloudinary.
+            if (user.getProfilePicturePublicId() == null) {
+                Map<String, String> fileInfo = generateAndUploadAvatar(dto.getFirstName(), dto.getLastName());
+                user.setProfilePictureUrl(fileInfo.get("url"));
+                user.setProfilePicturePublicId(fileInfo.get("publicId"));
+            }
         }
-        // Si no se sube imagen y la que tiene es de Cloudinary, no se hace nada.
+        // Si no se sube imagen y la que tiene ya es de Cloudinary, no se hace nada.
 
-        // 7) Increment token version
         user.incrementTokenVersion();
-
         userRepository.save(user);
-
-        // 9) Response
         return new UserResponse(
                 user.getUserName() +
-                        " ha sido actualizado correctamente. Por seguridad, su sesión actual se invalidará; por favor, inicie sesión de nuevo."
-        );
+                        " ha sido actualizado correctamente. Por seguridad, su sesión actual se invalidará; por favor, inicie sesión de nuevo.");
     }
 
     public Map<String, Boolean> softDeleteUser(Long id, UserDetails currentUser) {
@@ -299,18 +337,24 @@ public class UserService {
         if (profileImage == null || profileImage.isEmpty()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "No se ha proporcionado una imagen.");
         }
-
         User user = findUserById(id);
 
-        // Si la imagen anterior era de Cloudinary (tiene publicId), la borramos
+        // Si la imagen anterior era de Cloudinary, la borramos
         if (user.getProfilePicturePublicId() != null) {
             storageService.deleteFile(user.getProfilePicturePublicId(), null);
         }
 
-        // Guardamos la nueva imagen y actualizamos la entidad
-        Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
-        user.setProfilePictureUrl(fileInfo.get("url"));
-        user.setProfilePicturePublicId(fileInfo.get("publicId"));
+        try {
+            // Guardamos la nueva imagen y actualizamos la entidad
+            Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+            user.setProfilePictureUrl(fileInfo.get("url"));
+            user.setProfilePicturePublicId(fileInfo.get("publicId"));
+        } catch (Exception e) {
+            // Fallback: Si la subida falla, genera y sube un avatar
+            Map<String, String> fileInfo = generateAndUploadAvatar(user.getFirstName(), user.getLastName());
+            user.setProfilePictureUrl(fileInfo.get("url"));
+            user.setProfilePicturePublicId(fileInfo.get("publicId"));
+        }
 
         userRepository.save(user);
         return new UserResponse("Imagen de perfil de " + user.getUserName() + " actualizada.");
@@ -319,17 +363,15 @@ public class UserService {
     public UserResponse deleteProfileImage(Long id) {
         User user = findUserById(id);
 
-        // Si no hay publicId, ya está usando un avatar. No hay nada que hacer.
-        if (user.getProfilePicturePublicId() == null) {
-            return new UserResponse("El usuario ya está usando un avatar generado.");
+        // Si hay una imagen en Cloudinary, la borramos
+        if (user.getProfilePicturePublicId() != null) {
+            storageService.deleteFile(user.getProfilePicturePublicId(), null);
         }
 
-        // Si hay publicId, significa que es una imagen de Cloudinary. La borramos.
-        storageService.deleteFile(user.getProfilePicturePublicId(), null);
-
-        // Restauramos al avatar por defecto
-        user.setProfilePictureUrl(generateAvatarUrl(user.getFirstName(), user.getLastName()));
-        user.setProfilePicturePublicId(null); // Limpiamos el publicId
+        // Siempre se restaura a un avatar por defecto subido a Cloudinary
+        Map<String, String> fileInfo = generateAndUploadAvatar(user.getFirstName(), user.getLastName());
+        user.setProfilePictureUrl(fileInfo.get("url"));
+        user.setProfilePicturePublicId(fileInfo.get("publicId"));
 
         userRepository.save(user);
         return new UserResponse("Imagen de perfil restaurada al avatar por defecto.");
