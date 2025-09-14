@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -101,6 +102,36 @@ public class JwtProvider {
         } catch (JwtException | IllegalArgumentException e) {
             throw new CustomException(HttpStatus.UNAUTHORIZED, "Refresh token inválido.");
         }
+    }
+
+    public String generateAccessToken(OAuth2User oauth2User) {
+        String email = oauth2User.getAttribute("email");
+        // Para un usuario de Google, le asignamos el rol por defecto y tokenVersion 0.
+        // Tu CustomOAuth2UserService ya se encarga de guardar esto en la BD.
+        List<String> roles = List.of("ROLE_USER");
+        Integer tokenVersion = 0;
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", email); // Usamos el email como subject
+        claims.put("roles", roles);
+        claims.put("tv", tokenVersion);
+        claims.put("iat", Instant.now().getEpochSecond());
+        claims.put("exp", Instant.now().plusSeconds(accessTokenExpiration).getEpochSecond());
+
+        return Jwts.builder().setClaims(claims).signWith(getSecretKey()).compact();
+    }
+
+    /**
+     * Genera un Refresh Token a partir de un usuario de OAuth2.
+     */
+    public String generateRefreshToken(OAuth2User oauth2User) {
+        String email = oauth2User.getAttribute("email");
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", email);
+        claims.put("iat", Instant.now().getEpochSecond());
+        claims.put("exp", Instant.now().plusSeconds(refreshTokenExpiration).getEpochSecond());
+
+        return Jwts.builder().setClaims(claims).signWith(getSecretKey()).compact();
     }
 
     /**

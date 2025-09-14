@@ -2,6 +2,8 @@ package com.app.shopin.modules.security;
 
 import com.app.shopin.modules.security.jwt.JwtEntryPoint;
 import com.app.shopin.modules.security.jwt.JwtTokenFilter;
+import com.app.shopin.modules.security.jwt.OAuth2LoginSuccessHandler;
+import com.app.shopin.modules.security.service.CustomOAuth2UserService;
 import com.app.shopin.modules.security.service.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +20,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
 @EnableWebSecurity
@@ -36,28 +40,56 @@ public class MainSecurity {
     @Autowired
     JwtTokenFilter jwtTokenFilter;
 
+    @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
+    @Autowired
+    private OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+
     AuthenticationManager authenticationManager;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);
         builder.userDetailsService(userDetailsServiceImpl).passwordEncoder(passwordEncoder);
-        authenticationManager = builder.build();
-        http.authenticationManager(authenticationManager);
+        return builder.build();
+    }
 
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.cors(Customizer.withDefaults());
-        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
 
-        http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
-                .requestMatchers("/api/email/send").permitAll()
-                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
-                .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE")
-                .anyRequest().authenticated());
-        http.exceptionHandling(exc -> exc.authenticationEntryPoint(jwtEntryPoint));
-        http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+                // --- INICIO DE LAS REGLAS DE ACCESO COMPLETAS ---
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Rutas Públicas (no requieren token)
+                        .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+                        .requestMatchers("/api/email/send").permitAll() // <-- Faltaba esta
+
+                        // 2. Rutas Específicas por Rol
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN") // <-- Faltaba esta
+                        .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE") // <-- Faltaba esta
+
+                        // 3. Cualquier otra petición requiere autenticación
+                        .anyRequest().authenticated()
+                )
+                // --- FIN DE LAS REGLAS DE ACCESO ---
+
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo ->
+                                // --- CAMBIO FINAL: usa .oidcUserService en lugar de .userService ---
+                                userInfo.oidcUserService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2LoginSuccessHandler)
+                )
+
+                .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
+                .exceptionHandling(exc -> exc.authenticationEntryPoint(jwtEntryPoint))
+                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }
