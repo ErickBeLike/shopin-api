@@ -2,6 +2,7 @@ package com.app.shopin.services.cloudinary;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.cloudinary.Cloudinary;
+import com.cloudinary.Transformation;
 import com.cloudinary.utils.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -39,7 +42,8 @@ public class CloudinaryStorageService implements StorageService {
             Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "public_id", uniqueId, // <--- Solo el ID único
                     "folder", subfolder, // <--- Se usa el parámetro folder
-                    "resource_type", "auto"));
+                    "resource_type", "auto",
+                    "transformation", new Transformation().width(96).height(96).gravity("face").crop("thumb")));
 
             // Crea un mapa para devolver tanto la URL como el publicId
             Map<String, String> result = new HashMap<>();
@@ -51,6 +55,35 @@ public class CloudinaryStorageService implements StorageService {
             return result;
         } catch (IOException e) {
             throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al subir el archivo a Cloudinary");
+        }
+    }
+
+    @Override
+    public Map<String, String> uploadFromUrl(String url, String subfolder) {
+        try {
+            // 1. Abrir un stream a la URL de la imagen
+            URL imageUrl = new URL(url);
+            InputStream inputStream = imageUrl.openStream();
+            byte[] bytes = inputStream.readAllBytes();
+            inputStream.close();
+
+            // 2. Lógica de subida (es casi idéntica a saveFile)
+            String uniqueId = UUID.randomUUID().toString();
+            Map uploadResult = cloudinary.uploader().upload(bytes, ObjectUtils.asMap(
+                    "public_id", uniqueId,
+                    "folder", subfolder,
+                    "resource_type", "image",
+                    "transformation", new Transformation().width(96).height(96).gravity("face").crop("thumb")
+            ));
+
+            Map<String, String> result = new HashMap<>();
+            result.put("url", (String) uploadResult.get("secure_url"));
+            result.put("publicId", (String) uploadResult.get("public_id"));
+
+            return result;
+        } catch (IOException e) {
+            log.error("Error al descargar o subir la imagen desde la URL: {}", url, e);
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al procesar la imagen desde la URL");
         }
     }
 
