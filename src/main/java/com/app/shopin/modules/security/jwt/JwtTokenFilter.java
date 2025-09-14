@@ -34,6 +34,13 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain filterChain)
             throws ServletException, IOException {
+        String path = req.getServletPath();
+        // Si la petición es para una ruta de autenticación o de oauth2, la dejamos pasar
+        // sin intentar validar un token. Esto es crucial para que esos flujos funcionen.
+        if (path.startsWith("/api/auth") || path.startsWith("/oauth2")) {
+            filterChain.doFilter(req, res);
+            return; // Muy importante: detenemos la ejecución del filtro aquí.
+        }
         try {
             String token = getToken(req);
             // Usamos el nuevo método que valida all de una vez

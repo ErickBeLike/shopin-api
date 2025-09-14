@@ -1,12 +1,16 @@
 package com.app.shopin.modules.security.jwt;
 
+import com.app.shopin.modules.security.service.UserDetailsServiceImpl;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -21,23 +25,27 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     @Autowired
     private JwtProvider jwtProvider;
 
+    // YA NO NECESITAMOS UserDetailsServiceImpl aquí
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
-        // 1. Genera tus tokens (Access y Refresh)
-        String accessToken = jwtProvider.generateAccessToken(authentication);
-        String refreshToken = jwtProvider.generateRefreshToken(authentication);
+        // Obtenemos el usuario de OAuth2 que nos da Spring.
+        OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
 
-        // 2. Crea y configura la cookie para el Refresh Token
+        // Llamamos a los nuevos métodos del JwtProvider que saben cómo manejar un OAuth2User.
+        String accessToken = jwtProvider.generateAccessToken(oauth2User);
+        String refreshToken = jwtProvider.generateRefreshToken(oauth2User);
+
+        // El resto del código para la cookie y la redirección es el mismo.
         Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true);
+        refreshTokenCookie.setSecure(false);
         refreshTokenCookie.setPath("/api/auth/refresh");
-        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30 días
+        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60);
         response.addCookie(refreshTokenCookie);
 
-        // 3. Redirige al frontend con el Access Token como parámetro
-        String redirectUrl = frontendRedirectUrl + "?token=" + accessToken; // Cambia la URL a la de tu frontend
+        String redirectUrl = frontendRedirectUrl + "?token=" + accessToken;
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }

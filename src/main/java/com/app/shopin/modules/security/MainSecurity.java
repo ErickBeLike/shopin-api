@@ -21,6 +21,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -46,33 +48,45 @@ public class MainSecurity {
     AuthenticationManager authenticationManager;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);
         builder.userDetailsService(userDetailsServiceImpl).passwordEncoder(passwordEncoder);
-        authenticationManager = builder.build();
-        http.authenticationManager(authenticationManager);
+        return builder.build();
+    }
 
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.cors(Customizer.withDefaults());
-        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
 
-        http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/login/oauth2/**", "/oauth2/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
-                .requestMatchers("/api/email/send").permitAll()
-                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
-                .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE")
-                .anyRequest().authenticated());
+                // --- INICIO DE LAS REGLAS DE ACCESO COMPLETAS ---
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Rutas Públicas (no requieren token)
+                        .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+                        .requestMatchers("/api/email/send").permitAll() // <-- Faltaba esta
 
-        http.exceptionHandling(exc -> exc.authenticationEntryPoint(jwtEntryPoint));
-        http.oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo
-                        .userService(customOAuth2UserService) // Aquí le dices que use tu servicio
+                        // 2. Rutas Específicas por Rol
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN") // <-- Faltaba esta
+                        .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE") // <-- Faltaba esta
+
+                        // 3. Cualquier otra petición requiere autenticación
+                        .anyRequest().authenticated()
                 )
-                .successHandler(oAuth2LoginSuccessHandler)
-        );
+                // --- FIN DE LAS REGLAS DE ACCESO ---
 
-        http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oAuth2LoginSuccessHandler)
+                )
+
+                .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
+                .exceptionHandling(exc -> exc.authenticationEntryPoint(jwtEntryPoint))
+                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }
