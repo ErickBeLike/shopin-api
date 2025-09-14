@@ -1,5 +1,7 @@
 package com.app.shopin.modules.user.controller;
 
+import com.app.shopin.modules.security.dto.SetupTwoFactorDTO;
+import com.app.shopin.modules.security.dto.TwoFactorVerificationRequestDTO;
 import com.app.shopin.modules.user.dto.*;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
@@ -120,6 +122,29 @@ public class UserController {
                 changePasswordDTO.newPassword(),
                 currentUser
         );
+        return ResponseEntity.ok(response);
+    }
+
+    // 2FA SECTION
+    @PostMapping("/{userId}/2fa/setup")
+    public ResponseEntity<SetupTwoFactorDTO> setup2FA(@PathVariable Long userId) {
+        // Aquí deberías añadir una validación para asegurar que el usuario autenticado
+        // es el mismo que el {userId} o es un admin.
+        SetupTwoFactorDTO response = userService.setupTwoFactorAuthentication(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{userId}/2fa/enable")
+    public ResponseEntity<UserResponse> enable2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid TwoFactorVerificationRequestDTO verificationRequest) {
+        UserResponse response = userService.enableTwoFactorAuthentication(userId, verificationRequest.code());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{userId}/2fa/disable")
+    public ResponseEntity<UserResponse> disable2FA(@PathVariable Long userId) {
+        UserResponse response = userService.disableTwoFactorAuthentication(userId);
         return ResponseEntity.ok(response);
     }
 

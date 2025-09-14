@@ -2,7 +2,9 @@ package com.app.shopin.modules.user.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
+import com.app.shopin.modules.security.dto.SetupTwoFactorDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.service.TwoFactorService;
 import com.app.shopin.modules.user.dto.NewUserDTO;
 import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.enums.RolName;
@@ -57,6 +59,9 @@ public class UserService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private TwoFactorService twoFactorService;
 
     private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
         boolean isAdmin = currentUser.getAuthorities().stream()
@@ -457,6 +462,44 @@ public class UserService {
         userRepository.save(user);
 
         return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
+    }
+
+    // 2FA SECTION
+    public SetupTwoFactorDTO setupTwoFactorAuthentication(Long userId) {
+        User user = findUserById(userId);
+        // Generamos un nuevo secreto
+        final String secret = twoFactorService.generateNewSecret();
+        // Generamos el QR
+        String qrCodeImageUri = twoFactorService.generateQrCodeImageUri(secret, user.getEmail());
+
+        // Guardamos el secreto en el usuario PERO aún no lo activamos
+        user.setTwoFactorSecret(secret);
+        user.setTwoFactorEnabled(false); // Asegurarse de que esté desactivado hasta la verificación
+        userRepository.save(user);
+
+        return new SetupTwoFactorDTO(secret, qrCodeImageUri);
+    }
+
+    public UserResponse enableTwoFactorAuthentication(Long userId, String code) {
+        User user = findUserById(userId);
+
+        // Verificamos que el código sea válido para el secreto guardado
+        if (!twoFactorService.isCodeValid(user.getTwoFactorSecret(), code)) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "El código de verificación es incorrecto.");
+        }
+
+        // Si es válido, activamos la 2FA
+        user.setTwoFactorEnabled(true);
+        userRepository.save(user);
+        return new UserResponse("La autenticación de dos factores ha sido habilitada exitosamente.");
+    }
+
+    public UserResponse disableTwoFactorAuthentication(Long userId) {
+        User user = findUserById(userId);
+        user.setTwoFactorEnabled(false);
+        user.setTwoFactorSecret(null); // Opcional: limpiar el secreto
+        userRepository.save(user);
+        return new UserResponse("La autenticación de dos factores ha sido deshabilitada.");
     }
 
 }
