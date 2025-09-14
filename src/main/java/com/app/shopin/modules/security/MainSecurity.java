@@ -79,7 +79,10 @@ public class MainSecurity {
                 // --- FIN DE LAS REGLAS DE ACCESO ---
 
                 .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .userInfoEndpoint(userInfo ->
+                                // --- CAMBIO FINAL: usa .oidcUserService en lugar de .userService ---
+                                userInfo.oidcUserService(customOAuth2UserService)
+                        )
                         .successHandler(oAuth2LoginSuccessHandler)
                 )
 

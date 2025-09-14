@@ -4,6 +4,9 @@ import com.app.shopin.modules.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.Collection;
@@ -11,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class PrincipalUser implements UserDetails, OAuth2User {
+public class PrincipalUser implements UserDetails, OidcUser {
     private String userName;
     private String password;
     private Integer tokenVersion;
@@ -20,41 +23,47 @@ public class PrincipalUser implements UserDetails, OAuth2User {
     private User user;
 
     private Map<String, Object> attributes;
+    private OidcIdToken idToken;
+    private OidcUserInfo userInfo;
 
-    public PrincipalUser(String userName, String password, Integer tokenVersion, Collection<? extends GrantedAuthority> authorities, User user) {
-        this.userName = userName;
-        this.password = password;
-        this.tokenVersion = tokenVersion;
-        this.authorities = authorities;
+    public PrincipalUser(User user, Collection<? extends GrantedAuthority> authorities, Map<String, Object> attributes) {
         this.user = user;
+        this.userName = user.getUserName();
+        this.password = user.getPassword();
+        this.tokenVersion = user.getTokenVersion();
+        this.authorities = authorities;
+        this.attributes = attributes;
     }
 
     public static PrincipalUser build(User user){
         List<GrantedAuthority> authorities =
                 user.getRoles().stream().map(rol -> new SimpleGrantedAuthority(rol
                         .getRolName().name())).collect(Collectors.toList());
-        return new PrincipalUser(user.getUserName(), user.getPassword(), user.getTokenVersion(), authorities, user);
+        return new PrincipalUser(user, authorities, null);
     }
 
-    public static PrincipalUser build(User user, Map<String, Object> attributes) {
-        PrincipalUser principalUser = build(user);
-        principalUser.setAttributes(attributes);
+    public static PrincipalUser build(User user, OidcUser oidcUser) {
+        PrincipalUser principalUser = build(user); // Reutilizamos el build básico
+        principalUser.attributes = oidcUser.getAttributes();
+        principalUser.idToken = oidcUser.getIdToken();
+        principalUser.userInfo = oidcUser.getUserInfo();
         return principalUser;
     }
 
     @Override
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
+    public Map<String, Object> getAttributes() { return this.attributes; }
 
     @Override
-    public String getName() {
-        return user.getEmail();
-    }
+    public Map<String, Object> getClaims() { return this.attributes; }
 
-    public void setAttributes(Map<String, Object> attributes) {
-        this.attributes = attributes;
-    }
+    @Override
+    public OidcUserInfo getUserInfo() { return this.userInfo; }
+
+    @Override
+    public OidcIdToken getIdToken() { return this.idToken; }
+
+    @Override
+    public String getName() { return user.getEmail(); }
 
     public Integer getTokenVersion() {
         return tokenVersion;
