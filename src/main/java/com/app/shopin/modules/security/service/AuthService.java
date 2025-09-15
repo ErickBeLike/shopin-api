@@ -1,7 +1,7 @@
 package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.ValidationResponseDTO;
+import com.app.shopin.modules.security.dto.*;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.services.mailtrap.EmailService;
 import com.app.shopin.util.UserResponse;
@@ -9,8 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
-import com.app.shopin.modules.security.dto.JwtDTO;
-import com.app.shopin.modules.security.dto.LoginDTO;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.security.jwt.JwtProvider;
 import com.app.shopin.modules.user.repository.UserRepository;
@@ -20,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +27,7 @@ import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -55,6 +55,9 @@ public class AuthService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private TwoFactorService twoFactorService;
 
     public record TokenPair(String accessToken, String refreshToken) {}
     private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
@@ -137,24 +140,45 @@ public class AuthService {
         return new UserResponse("Tu contraseña ha sido actualizada correctamente. Por favor, inicia sesión de nuevo.");
     }
 
-    public TokenPair login(LoginDTO loginDTO) {
+    public User authenticateAndGetUser(LoginDTO loginDTO) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDTO.getUsernameOrEmail(), loginDTO.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
         PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
-        User user = principal.getUser();
+        return principal.getUser();
+    }
+
+    public TokenPair generateTokensForUser(User user) {
+        // Creamos el PrincipalUser y la Autenticación para el contexto de Spring Security
+        PrincipalUser principalUser = PrincipalUser.build(user);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                principalUser, null, principalUser.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         try {
             emailService.sendLoginNotification(user);
         } catch (Exception e) {
             log.error("Error al enviar el correo de notificación de login para el usuario: " + user.getEmail(), e);
         }
-
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = jwtProvider.generateRefreshToken(authentication);
-
         return new TokenPair(accessToken, refreshToken);
+    }
+
+    public TokenPair verifyTwoFactorCodeAndLogin(LoginTwoFactorRequestDTO login2FaRequestDTO) {
+        String identifier = login2FaRequestDTO.usernameOrEmail();
+
+        // 1. Buscamos al usuario
+        User user = userRepository.findByUserNameOrEmail(identifier, identifier)
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas."));
+
+        // 2. Verificamos que 2FA esté habilitado y que el código sea válido
+        if (!user.isTwoFactorEnabled() || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), login2FaRequestDTO.code())) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Código 2FA inválido.");
+        }
+
+        // 3. Si t0do es correcto, generamos los tokens llamando a nuestro método reutilizable
+        return generateTokensForUser(user);
     }
 
     public JwtDTO refresh(String refreshToken) throws ParseException {

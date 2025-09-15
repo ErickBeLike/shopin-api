@@ -44,9 +44,13 @@ public class User {
 
     @Column(nullable = true)
     private String passwordResetCode;
-
     @Column(nullable = true)
     private LocalDateTime resetCodeExpiration;
+
+    @Column(nullable = false)
+    private boolean twoFactorEnabled = false;
+    @Column
+    private String twoFactorSecret;
     //---
 
     @Column(length = 100)
@@ -186,6 +190,22 @@ public class User {
 
     public void setResetCodeExpiration(LocalDateTime resetCodeExpiration) {
         this.resetCodeExpiration = resetCodeExpiration;
+    }
+
+    public boolean isTwoFactorEnabled() {
+        return twoFactorEnabled;
+    }
+
+    public void setTwoFactorEnabled(boolean twoFactorEnabled) {
+        this.twoFactorEnabled = twoFactorEnabled;
+    }
+
+    public String getTwoFactorSecret() {
+        return twoFactorSecret;
+    }
+
+    public void setTwoFactorSecret(String twoFactorSecret) {
+        this.twoFactorSecret = twoFactorSecret;
     }
 
     public String getProfilePictureUrl() {
