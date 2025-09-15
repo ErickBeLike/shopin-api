@@ -24,7 +24,7 @@ public class CreateRoles implements CommandLineRunner {
          * Sección a descomentar para crear roles
          */
 
-/**
+/*
         Rol rolSuperAdmin = new Rol(RolName.ROLE_SUPERADMIN);
         Rol rolAdmin = new Rol(RolName.ROLE_ADMIN);
         Rol rolEmployee = new Rol(RolName.ROLE_EMPLOYEE);
@@ -34,7 +34,7 @@ public class CreateRoles implements CommandLineRunner {
         rolService.save(rolAdmin);
         rolService.save(rolEmployee);
         rolService.save(rolUser);
-// **/
+// */
 
     }
 }

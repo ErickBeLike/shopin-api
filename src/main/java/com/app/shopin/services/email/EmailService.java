@@ -1,4 +1,4 @@
-package com.app.shopin.services.mailtrap;
+package com.app.shopin.services.email;
 
 import com.app.shopin.modules.user.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,6 +96,68 @@ public class EmailService {
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setTo(user.getEmail());
         mailMessage.setSubject("ShopIn - Tu cuenta ha sido reactivada");
+        mailMessage.setText(messageBody);
+
+        javaMailSender.send(mailMessage);
+    }
+
+    // 2FA EMAIL CODE SEND SECTION
+    public void sendEnableConfirmationCode(User user, String code) {
+        String greeting = buildPersonalizedGreeting(user);
+
+        String messageBody = String.format(
+                "Hola, %s.\n\n" +
+                        "Has solicitado activar la autenticación de dos factores por correo. Para completar el proceso, usa el siguiente código de verificación:\n\n" +
+                        "Código: %s\n\n" +
+                        "Este código expirará en 10 minutos.\n\n" +
+                        "Si no solicitaste esto, cambia de inmediato tu contraseña.",
+                greeting, code
+        );
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(user.getEmail());
+        mailMessage.setSubject("ShopIn - Activa la autenticación de dos factores");
+        mailMessage.setText(messageBody);
+
+        javaMailSender.send(mailMessage);
+    }
+
+    public void sendTwoFactorCode(User user, String code) {
+        String greeting = buildPersonalizedGreeting(user);
+
+        String messageBody = String.format(
+                "Hola, %s.\n\n" +
+                        "Estás intentando iniciar sesión. Para completar el proceso, usa el siguiente código de verificación:\n\n" +
+                        "Código: %s\n\n" +
+                        "Este código expirará en 5 minutos.\n\n" +
+                        "Si no intentaste iniciar sesión, cambia de inmediato tu contraseña.",
+                greeting, code
+        );
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(user.getEmail());
+        mailMessage.setSubject("ShopIn - Tu Código de Verificación");
+        mailMessage.setText(messageBody);
+
+        javaMailSender.send(mailMessage);
+    }
+
+    // 2FA EMAIL DISABLE CODE SEND SECTION
+    public void sendDisableConfirmationCode(User user, String code) {
+        String greeting = buildPersonalizedGreeting(user);
+
+        String messageBody = String.format(
+                "Hola, %s.\n\n" +
+                        "Has solicitado desactivar un método de autenticación de dos factores. Para confirmar esta acción, usa el siguiente código:\n\n" +
+                        "Código: %s\n\n" +
+                        "Este código expirará en 10 minutos.\n\n" +
+                        "Si no solicitaste esto, cambia de inmediato tu contraseña.",
+                greeting, code
+        );
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(user.getEmail());
+        mailMessage.setSubject("ShopIn - Confirma la desactivación de 2FA");
         mailMessage.setText(messageBody);
 
         javaMailSender.send(mailMessage);

@@ -3,7 +3,8 @@ package com.app.shopin.modules.security.service;
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.dto.*;
 import com.app.shopin.modules.security.entity.PrincipalUser;
-import com.app.shopin.services.mailtrap.EmailService;
+import com.app.shopin.modules.security.enums.TwoFactorMethod;
+import com.app.shopin.services.email.EmailService;
 import com.app.shopin.util.UserResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,6 @@ import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -165,19 +164,45 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    public TokenPair verifyTwoFactorCodeAndLogin(LoginTwoFactorRequestDTO login2FaRequestDTO) {
-        String identifier = login2FaRequestDTO.usernameOrEmail();
+    // 2FA EMAIL SECTION
+    public void sendTwoFactorCodeIfApplicable(User user) {
+        if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.EMAIL && user.isTwoFactorEmailEnabled()) {
+            String code = generateRandomCode();
+            user.setTwoFactorEmailCode(code);
+            user.setTwoFactorCodeExpiration(LocalDateTime.now().plusMinutes(5)); // Código válido por 5 min
+            userRepository.save(user);
+            // IMPORTANTE: Debes crear este método en tu EmailService
+            emailService.sendTwoFactorCode(user, code);
+        }
+    }
 
-        // 1. Buscamos al usuario
+    public TokenPair verifyEmailCodeAndLogin(LoginTwoFactorRequestDTO dto) {
+        String identifier = dto.usernameOrEmail();
         User user = userRepository.findByUserNameOrEmail(identifier, identifier)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas."));
 
-        // 2. Verificamos que 2FA esté habilitado y que el código sea válido
-        if (!user.isTwoFactorEnabled() || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), login2FaRequestDTO.code())) {
-            throw new CustomException(HttpStatus.UNAUTHORIZED, "Código 2FA inválido.");
+        if (!user.isTwoFactorEmailEnabled() ||
+                !dto.code().equals(user.getTwoFactorEmailCode()) ||
+                user.getTwoFactorCodeExpiration().isBefore(LocalDateTime.now())) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Código de correo inválido o expirado.");
         }
 
-        // 3. Si t0do es correcto, generamos los tokens llamando a nuestro método reutilizable
+        user.setTwoFactorEmailCode(null);
+        user.setTwoFactorCodeExpiration(null);
+        userRepository.save(user);
+
+        return generateTokensForUser(user);
+    }
+
+    // 2FA APP SECTION
+    public TokenPair verifyAppCodeAndLogin(LoginTwoFactorRequestDTO dto) {
+        String identifier = dto.usernameOrEmail();
+        User user = userRepository.findByUserNameOrEmail(identifier, identifier)
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas."));
+
+        if (!user.isTwoFactorAppEnabled() || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), dto.code())) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Código de autenticación inválido.");
+        }
         return generateTokensForUser(user);
     }
 
