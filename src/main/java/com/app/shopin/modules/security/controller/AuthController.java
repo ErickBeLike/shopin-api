@@ -5,6 +5,7 @@ import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.dto.*;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.service.AuthService;
+import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.util.UserResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -49,26 +50,53 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(
+    public ResponseEntity<?> login(
             @Valid @RequestBody LoginDTO loginDTO,
-            HttpServletResponse response) { // Inyectamos HttpServletResponse
+            HttpServletResponse response) {
 
-        AuthService.TokenPair tokenPair = authService.login(loginDTO);
+        // 1. Autentica las credenciales. Si son inválidas, falla aquí.
+        User user = authService.authenticateAndGetUser(loginDTO);
 
-        // 1. Creamos la cookie para el Refresh Token
+        // 2. Revisa si el usuario tiene 2FA activado.
+        if (user.isTwoFactorEnabled()) {
+            // Si SÍ, responde que se necesita el segundo paso.
+            return ResponseEntity.ok(Map.of("twoFactorRequired", true, "message", "Por favor, ingrese su código de autenticación."));
+        }
+
+        // 3. Si NO, el login es directo. Genera los tokens.
+        AuthService.TokenPair tokenPair = authService.generateTokensForUser(user);
+
+        // 4. Crea la respuesta exitosa (cookie + JSON).
+        return createLoginSuccessResponse(tokenPair, response);
+    }
+
+    @PostMapping("/login/verify-2fa")
+    public ResponseEntity<LoginResponseDTO> verifyAndLogin(
+            @Valid @RequestBody LoginTwoFactorRequestDTO login2FaRequestDTO,
+            HttpServletResponse response) {
+
+        // 1. El servicio valida el código. Si es inválido, falla aquí. Si es válido, devuelve los tokens.
+        AuthService.TokenPair tokenPair = authService.verifyTwoFactorCodeAndLogin(login2FaRequestDTO);
+
+        // 2. Crea la respuesta exitosa (cookie + JSON).
+        return createLoginSuccessResponse(tokenPair, response);
+    }
+
+    private ResponseEntity<LoginResponseDTO> createLoginSuccessResponse(AuthService.TokenPair tokenPair, HttpServletResponse response) {
+        // 1. Creamos y configuramos la cookie para el Refresh Token.
         Cookie refreshTokenCookie = new Cookie("refreshToken", tokenPair.refreshToken());
-        refreshTokenCookie.setHttpOnly(true); // ¡Importante! Inaccesible desde JavaScript
-        refreshTokenCookie.setSecure(true); // Solo en HTTPS (en producción)
-        refreshTokenCookie.setPath("/api/auth/refresh"); // Solo se envía a este endpoint
-        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30 días
-
-        // 2. Añadimos la cookie a la respuesta HTTP
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true); // Siempre 'true' en producción (solo HTTPS).
+        refreshTokenCookie.setPath("/api/auth/refresh");
+        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30 días.
         response.addCookie(refreshTokenCookie);
 
-        // 3. Devolvemos el Access Token y datos del usuario en el cuerpo JSON
+        // 2. Obtenemos detalles del usuario autenticado para la respuesta.
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
         List<String> roles = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList());
+
+        // 3. Construimos el cuerpo de la respuesta JSON.
         LoginResponseDTO loginResponse = new LoginResponseDTO(tokenPair.accessToken(), principal.getUsername(), roles);
 
         return ResponseEntity.ok(loginResponse);
