@@ -2,6 +2,7 @@ package com.app.shopin.modules.user.entity;
 
 // import com.app.shopin.entity.employee.Employee;
 import com.app.shopin.modules.security.entity.Rol;
+import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.SQLDelete;
@@ -47,10 +48,30 @@ public class User {
     @Column(nullable = true)
     private LocalDateTime resetCodeExpiration;
 
+    /*
     @Column(nullable = false)
     private boolean twoFactorEnabled = false;
     @Column
     private String twoFactorSecret;
+     */
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TwoFactorMethod preferredTwoFactorMethod = TwoFactorMethod.NONE;
+
+    // 2FA APP
+    @Column(nullable = false)
+    private boolean twoFactorAppEnabled = false;
+    @Column
+    private String twoFactorSecret;
+
+    // 2FA EMAIL
+    @Column(nullable = false)
+    private boolean twoFactorEmailEnabled = false;
+    @Column
+    private String twoFactorEmailCode;
+    @Column
+    private LocalDateTime twoFactorCodeExpiration;
     //---
 
     @Column(length = 100)
@@ -192,12 +213,20 @@ public class User {
         this.resetCodeExpiration = resetCodeExpiration;
     }
 
-    public boolean isTwoFactorEnabled() {
-        return twoFactorEnabled;
+    public TwoFactorMethod getPreferredTwoFactorMethod() {
+        return preferredTwoFactorMethod;
     }
 
-    public void setTwoFactorEnabled(boolean twoFactorEnabled) {
-        this.twoFactorEnabled = twoFactorEnabled;
+    public void setPreferredTwoFactorMethod(TwoFactorMethod preferredTwoFactorMethod) {
+        this.preferredTwoFactorMethod = preferredTwoFactorMethod;
+    }
+
+    public boolean isTwoFactorAppEnabled() {
+        return twoFactorAppEnabled;
+    }
+
+    public void setTwoFactorAppEnabled(boolean twoFactorAppEnabled) {
+        this.twoFactorAppEnabled = twoFactorAppEnabled;
     }
 
     public String getTwoFactorSecret() {
@@ -206,6 +235,30 @@ public class User {
 
     public void setTwoFactorSecret(String twoFactorSecret) {
         this.twoFactorSecret = twoFactorSecret;
+    }
+
+    public boolean isTwoFactorEmailEnabled() {
+        return twoFactorEmailEnabled;
+    }
+
+    public void setTwoFactorEmailEnabled(boolean twoFactorEmailEnabled) {
+        this.twoFactorEmailEnabled = twoFactorEmailEnabled;
+    }
+
+    public String getTwoFactorEmailCode() {
+        return twoFactorEmailCode;
+    }
+
+    public void setTwoFactorEmailCode(String twoFactorEmailCode) {
+        this.twoFactorEmailCode = twoFactorEmailCode;
+    }
+
+    public LocalDateTime getTwoFactorCodeExpiration() {
+        return twoFactorCodeExpiration;
+    }
+
+    public void setTwoFactorCodeExpiration(LocalDateTime twoFactorCodeExpiration) {
+        this.twoFactorCodeExpiration = twoFactorCodeExpiration;
     }
 
     public String getProfilePictureUrl() {
