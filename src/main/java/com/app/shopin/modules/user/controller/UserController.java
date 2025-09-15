@@ -1,7 +1,6 @@
 package com.app.shopin.modules.user.controller;
 
-import com.app.shopin.modules.security.dto.SetupTwoFactorDTO;
-import com.app.shopin.modules.security.dto.TwoFactorVerificationRequestDTO;
+import com.app.shopin.modules.security.dto.*;
 import com.app.shopin.modules.user.dto.*;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
@@ -125,27 +124,72 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    // 2FA SECTION
-    @PostMapping("/{userId}/2fa/setup")
-    public ResponseEntity<SetupTwoFactorDTO> setup2FA(@PathVariable Long userId) {
-        // Aquí deberías añadir una validación para asegurar que el usuario autenticado
-        // es el mismo que el {userId} o es un admin.
-        SetupTwoFactorDTO response = userService.setupTwoFactorAuthentication(userId);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/{userId}/2fa/enable")
-    public ResponseEntity<UserResponse> enable2FA(
+    // 2FA APP SECTION
+    @PostMapping("/{userId}/2fa/app/setup")
+    public ResponseEntity<SetupTwoFactorDTO> setupApp2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid TwoFactorVerificationRequestDTO verificationRequest) {
-        UserResponse response = userService.enableTwoFactorAuthentication(userId, verificationRequest.code());
+            @RequestBody @Valid PasswordConfirmationDTO dto) { // <- AHORA PIDE CONTRASEÑA
+        SetupTwoFactorDTO response = userService.setupAppTwoFactor(userId, dto);
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/{userId}/2fa/disable")
-    public ResponseEntity<UserResponse> disable2FA(@PathVariable Long userId) {
-        UserResponse response = userService.disableTwoFactorAuthentication(userId);
+    @PostMapping("/{userId}/2fa/app/enable")
+    public ResponseEntity<UserResponse> enableApp2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid CodeConfirmationDTO  dto) {
+        UserResponse response = userService.enableAppTwoFactor(userId, dto);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{userId}/2fa/app/pre-disable")
+    public ResponseEntity<UserResponse> preDisableApp2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid PasswordConfirmationDTO dto) {
+        return ResponseEntity.ok(userService.preDisableAppTwoFactor(userId, dto));
+    }
+
+    @PostMapping("/{userId}/2fa/app/confirm-disable")
+    public ResponseEntity<UserResponse> confirmDisableApp2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid CodeConfirmationDTO dto) {
+        return ResponseEntity.ok(userService.confirmDisableAppTwoFactor(userId, dto));
+    }
+
+    // 2FA EMAIL SECTION
+    @PostMapping("/{userId}/2fa/email/setup")
+    public ResponseEntity<UserResponse> preEnableEmail2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid PasswordConfirmationDTO dto) {
+        return ResponseEntity.ok(userService.setupEmailTwoFactor(userId, dto));
+    }
+
+    @PostMapping("/{userId}/2fa/email/enable")
+    public ResponseEntity<UserResponse> confirmEnableEmail2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid CodeConfirmationDTO  dto) {
+        return ResponseEntity.ok(userService.enableEmailTwoFactor(userId, dto));
+    }
+
+    @PostMapping("/{userId}/2fa/email/pre-disable")
+    public ResponseEntity<UserResponse> preDisableEmail2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid PasswordConfirmationDTO dto) {
+        return ResponseEntity.ok(userService.preDisableEmailTwoFactor(userId, dto));
+    }
+
+    @PostMapping("/{userId}/2fa/email/confirm-disable")
+    public ResponseEntity<UserResponse> confirmDisableEmail2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid CodeConfirmationDTO  dto) {
+        return ResponseEntity.ok(userService.confirmDisableEmailTwoFactor(userId, dto));
+    }
+
+    // 2FA PREFERRED METHOD SECTION
+    @PostMapping("/{userId}/2fa/set-preferred")
+    public ResponseEntity<UserResponse> setPreferred2FA(
+            @PathVariable Long userId,
+            @RequestBody @Valid SetPreferredTwoFactorDTO dto) {
+        return ResponseEntity.ok(userService.setPreferredTwoFactorMethod(userId, dto.method()));
     }
 
 }

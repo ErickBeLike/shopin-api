@@ -3,7 +3,7 @@ package com.app.shopin.modules.security.service;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
-import com.app.shopin.services.mailtrap.EmailService;
+import com.app.shopin.services.email.EmailService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;

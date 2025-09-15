@@ -2,8 +2,11 @@ package com.app.shopin.modules.user.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
+import com.app.shopin.modules.security.dto.CodeConfirmationDTO;
+import com.app.shopin.modules.security.dto.PasswordConfirmationDTO;
 import com.app.shopin.modules.security.dto.SetupTwoFactorDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import com.app.shopin.modules.security.service.TwoFactorService;
 import com.app.shopin.modules.user.dto.NewUserDTO;
 import com.app.shopin.modules.security.entity.Rol;
@@ -16,7 +19,7 @@ import com.app.shopin.modules.user.dto.UpdateUsernameDTO;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
 import com.app.shopin.services.cloudinary.StorageService;
-import com.app.shopin.services.mailtrap.EmailService;
+import com.app.shopin.services.email.EmailService;
 import com.app.shopin.util.UserResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -464,42 +467,152 @@ public class UserService {
         return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
     }
 
-    // 2FA SECTION
-    public SetupTwoFactorDTO setupTwoFactorAuthentication(Long userId) {
+    // 2FA SECTION --------------
+    private void verifyUserPassword(User user, String password) {
+        if (password == null || !passwordEncoder.matches(password, user.getPassword())) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "La contraseña proporcionada es incorrecta.");
+        }
+    }
+
+    private String generateRandomCode() {
+        return String.valueOf(new Random().nextInt(900000) + 100000);
+    }
+
+    // 2FA APP SECTION
+    public SetupTwoFactorDTO setupAppTwoFactor(Long userId, PasswordConfirmationDTO dto) {
         User user = findUserById(userId);
-        // Generamos un nuevo secreto
+        // 1. PRIMERO, verificar la identidad del usuario con su contraseña
+        verifyUserPassword(user, dto.password());
+
+        // 2. Si la contraseña es correcta, AHORA SÍ generamos el secreto y el QR
         final String secret = twoFactorService.generateNewSecret();
-        // Generamos el QR
         String qrCodeImageUri = twoFactorService.generateQrCodeImageUri(secret, user.getEmail());
 
-        // Guardamos el secreto en el usuario PERO aún no lo activamos
         user.setTwoFactorSecret(secret);
-        user.setTwoFactorEnabled(false); // Asegurarse de que esté desactivado hasta la verificación
+        user.setTwoFactorAppEnabled(false);
         userRepository.save(user);
 
         return new SetupTwoFactorDTO(secret, qrCodeImageUri);
     }
 
-    public UserResponse enableTwoFactorAuthentication(Long userId, String code) {
+    public UserResponse enableAppTwoFactor(Long userId, CodeConfirmationDTO dto) {
         User user = findUserById(userId);
-
-        // Verificamos que el código sea válido para el secreto guardado
-        if (!twoFactorService.isCodeValid(user.getTwoFactorSecret(), code)) {
+        // Para este paso, ya no es necesaria la contraseña, porque ya la pidió el 'setup'.
+        // El "secreto" de que el usuario ya validó su contraseña es que el campo 'twoFactorSecret' no es nulo.
+        if (user.getTwoFactorSecret() == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Debes completar el paso de configuración inicial primero.");
+        }
+        if (dto.code() == null || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), dto.code())) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "El código de verificación es incorrecto.");
         }
 
-        // Si es válido, activamos la 2FA
-        user.setTwoFactorEnabled(true);
+        user.setTwoFactorAppEnabled(true);
+        if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.NONE) {
+            user.setPreferredTwoFactorMethod(TwoFactorMethod.APP);
+        }
         userRepository.save(user);
-        return new UserResponse("La autenticación de dos factores ha sido habilitada exitosamente.");
+        return new UserResponse("La autenticación de dos factores con la aplicación ha sido habilitada exitosamente.");
     }
 
-    public UserResponse disableTwoFactorAuthentication(Long userId) {
+    public UserResponse preDisableAppTwoFactor(Long userId, PasswordConfirmationDTO dto) {
         User user = findUserById(userId);
-        user.setTwoFactorEnabled(false);
-        user.setTwoFactorSecret(null); // Opcional: limpiar el secreto
+        verifyUserPassword(user, dto.password());
+        return new UserResponse("Contraseña verificada. Por favor, ingrese su código de la aplicación para confirmar la desactivación.");
+    }
+
+    public UserResponse confirmDisableAppTwoFactor(Long userId, CodeConfirmationDTO dto) { // <- DTO Actualizado
+        User user = findUserById(userId);
+        if (dto.code() == null || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), dto.code())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "El código de verificación de la aplicación es incorrecto.");
+        }
+
+        user.setTwoFactorAppEnabled(false);
+        user.setTwoFactorSecret(null);
+        if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.APP) {
+            user.setPreferredTwoFactorMethod(user.isTwoFactorEmailEnabled() ? TwoFactorMethod.EMAIL : TwoFactorMethod.NONE);
+        }
         userRepository.save(user);
-        return new UserResponse("La autenticación de dos factores ha sido deshabilitada.");
+        return new UserResponse("La autenticación de dos factores con la aplicación ha sido deshabilitada.");
+    }
+
+    // 2FA EMAIL SECTION
+    public UserResponse setupEmailTwoFactor(Long userId, PasswordConfirmationDTO dto) {
+        User user = findUserById(userId);
+        verifyUserPassword(user, dto.password());
+
+        String code = generateRandomCode();
+        user.setTwoFactorEmailCode(code);
+        user.setTwoFactorCodeExpiration(LocalDateTime.now().plusMinutes(10));
+        userRepository.save(user);
+        emailService.sendEnableConfirmationCode(user, code);
+
+        return new UserResponse("Contraseña verificada. Hemos enviado un código a tu correo para activar el servicio.");
+    }
+
+    public UserResponse enableEmailTwoFactor(Long userId, CodeConfirmationDTO  dto) {
+        User user = findUserById(userId);
+        if (dto.code() == null ||
+                !dto.code().equals(user.getTwoFactorEmailCode()) ||
+                user.getTwoFactorCodeExpiration().isBefore(LocalDateTime.now())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "El código de activación es incorrecto o ha expirado.");
+        }
+
+        // Limpiamos el código temporal
+        user.setTwoFactorEmailCode(null);
+        user.setTwoFactorCodeExpiration(null);
+
+        // Ahora sí, activamos el método
+        user.setTwoFactorEmailEnabled(true);
+        if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.NONE) {
+            user.setPreferredTwoFactorMethod(TwoFactorMethod.EMAIL);
+        }
+        userRepository.save(user);
+
+        return new UserResponse("La autenticación de dos factores por correo ha sido habilitada exitosamente.");
+    }
+
+    public UserResponse preDisableEmailTwoFactor(Long userId, PasswordConfirmationDTO dto) {
+        User user = findUserById(userId);
+        verifyUserPassword(user, dto.password());
+
+        String code = generateRandomCode();
+        user.setTwoFactorEmailCode(code);
+        user.setTwoFactorCodeExpiration(LocalDateTime.now().plusMinutes(10));
+        userRepository.save(user);
+        emailService.sendDisableConfirmationCode(user, code);
+
+        return new UserResponse("Contraseña verificada. Hemos enviado un código a tu correo para confirmar la desactivación.");
+    }
+
+    public UserResponse confirmDisableEmailTwoFactor(Long userId, CodeConfirmationDTO dto) { // <- DTO Actualizado
+        User user = findUserById(userId);
+        if (dto.code() == null ||
+                !dto.code().equals(user.getTwoFactorEmailCode()) ||
+                user.getTwoFactorCodeExpiration().isBefore(LocalDateTime.now())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "El código de confirmación es incorrecto o ha expirado.");
+        }
+
+        user.setTwoFactorEmailEnabled(false);
+        user.setTwoFactorEmailCode(null);
+        user.setTwoFactorCodeExpiration(null);
+        if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.EMAIL) {
+            user.setPreferredTwoFactorMethod(user.isTwoFactorAppEnabled() ? TwoFactorMethod.APP : TwoFactorMethod.NONE);
+        }
+        userRepository.save(user);
+        return new UserResponse("La autenticación de dos factores por correo ha sido deshabilitada.");
+    }
+
+    // 2FA PREFERRED METHOD SECTION
+    public UserResponse setPreferredTwoFactorMethod(Long userId, TwoFactorMethod method) {
+        User user = findUserById(userId);
+        if (method != TwoFactorMethod.NONE &&
+                (method == TwoFactorMethod.APP && !user.isTwoFactorAppEnabled()) ||
+                (method == TwoFactorMethod.EMAIL && !user.isTwoFactorEmailEnabled())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "No puedes establecer como preferido un método de 2FA que no has habilitado.");
+        }
+        user.setPreferredTwoFactorMethod(method);
+        userRepository.save(user);
+        return new UserResponse("Se ha actualizado tu método de autenticación preferido a: " + method);
     }
 
 }

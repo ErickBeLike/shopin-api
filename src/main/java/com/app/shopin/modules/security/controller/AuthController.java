@@ -4,6 +4,7 @@ package com.app.shopin.modules.security.controller;
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.dto.*;
 import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import com.app.shopin.modules.security.service.AuthService;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.util.UserResponse;
@@ -54,31 +55,35 @@ public class AuthController {
             @Valid @RequestBody LoginDTO loginDTO,
             HttpServletResponse response) {
 
-        // 1. Autentica las credenciales. Si son inválidas, falla aquí.
         User user = authService.authenticateAndGetUser(loginDTO);
 
-        // 2. Revisa si el usuario tiene 2FA activado.
-        if (user.isTwoFactorEnabled()) {
-            // Si SÍ, responde que se necesita el segundo paso.
-            return ResponseEntity.ok(Map.of("twoFactorRequired", true, "message", "Por favor, ingrese su código de autenticación."));
+        if (user.getPreferredTwoFactorMethod() != TwoFactorMethod.NONE) {
+            authService.sendTwoFactorCodeIfApplicable(user);
+            return ResponseEntity.ok(Map.of(
+                    "twoFactorRequired", true,
+                    "preferredMethod", user.getPreferredTwoFactorMethod()
+            ));
         }
 
-        // 3. Si NO, el login es directo. Genera los tokens.
         AuthService.TokenPair tokenPair = authService.generateTokensForUser(user);
-
-        // 4. Crea la respuesta exitosa (cookie + JSON).
         return createLoginSuccessResponse(tokenPair, response);
     }
 
-    @PostMapping("/login/verify-2fa")
-    public ResponseEntity<LoginResponseDTO> verifyAndLogin(
-            @Valid @RequestBody LoginTwoFactorRequestDTO login2FaRequestDTO,
+    // 2FA APP SECTION
+    @PostMapping("/login/verify-app")
+    public ResponseEntity<LoginResponseDTO> verifyAppCode(
+            @Valid @RequestBody LoginTwoFactorRequestDTO dto,
             HttpServletResponse response) {
+        AuthService.TokenPair tokenPair = authService.verifyAppCodeAndLogin(dto);
+        return createLoginSuccessResponse(tokenPair, response);
+    }
 
-        // 1. El servicio valida el código. Si es inválido, falla aquí. Si es válido, devuelve los tokens.
-        AuthService.TokenPair tokenPair = authService.verifyTwoFactorCodeAndLogin(login2FaRequestDTO);
-
-        // 2. Crea la respuesta exitosa (cookie + JSON).
+    // 2FA EMAIL SECTION
+    @PostMapping("/login/verify-email")
+    public ResponseEntity<LoginResponseDTO> verifyEmailCode(
+            @Valid @RequestBody LoginTwoFactorRequestDTO dto,
+            HttpServletResponse response) {
+        AuthService.TokenPair tokenPair = authService.verifyEmailCodeAndLogin(dto);
         return createLoginSuccessResponse(tokenPair, response);
     }
 
