@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,17 +23,15 @@ public class PrincipalUser implements UserDetails, OidcUser {
 
     private User user;
 
-    private Map<String, Object> attributes;
-    private OidcIdToken idToken;
-    private OidcUserInfo userInfo;
+    private OAuth2User oauth2User;
 
-    public PrincipalUser(User user, Collection<? extends GrantedAuthority> authorities, Map<String, Object> attributes) {
+    public PrincipalUser(User user, Collection<? extends GrantedAuthority> authorities, OAuth2User oauth2User) {
         this.user = user;
         this.userName = user.getUserName();
         this.password = user.getPassword();
         this.tokenVersion = user.getTokenVersion();
         this.authorities = authorities;
-        this.attributes = attributes;
+        this.oauth2User = oauth2User;
     }
 
     public static PrincipalUser build(User user){
@@ -42,25 +41,42 @@ public class PrincipalUser implements UserDetails, OidcUser {
         return new PrincipalUser(user, authorities, null);
     }
 
-    public static PrincipalUser build(User user, OidcUser oidcUser) {
-        PrincipalUser principalUser = build(user); // Reutilizamos el build básico
-        principalUser.attributes = oidcUser.getAttributes();
-        principalUser.idToken = oidcUser.getIdToken();
-        principalUser.userInfo = oidcUser.getUserInfo();
+    public static PrincipalUser build(User user, OAuth2User oauth2User) {
+        // Reutiliza el primer método 'build' para obtener las authorities
+        PrincipalUser principalUser = build(user);
+        // Y solo le asigna el oauth2User
+        principalUser.oauth2User = oauth2User;
         return principalUser;
     }
 
     @Override
-    public Map<String, Object> getAttributes() { return this.attributes; }
+    public Map<String, Object> getAttributes() {
+        return oauth2User != null ? oauth2User.getAttributes() : Collections.emptyMap();
+    }
 
     @Override
-    public Map<String, Object> getClaims() { return this.attributes; }
+    public Map<String, Object> getClaims() {
+        if (oauth2User instanceof OidcUser) {
+            return ((OidcUser) oauth2User).getClaims();
+        }
+        return getAttributes();
+    }
 
     @Override
-    public OidcUserInfo getUserInfo() { return this.userInfo; }
+    public OidcUserInfo getUserInfo() {
+        if (oauth2User instanceof OidcUser) {
+            return ((OidcUser) oauth2User).getUserInfo();
+        }
+        return null;
+    }
 
     @Override
-    public OidcIdToken getIdToken() { return this.idToken; }
+    public OidcIdToken getIdToken() {
+        if (oauth2User instanceof OidcUser) {
+            return ((OidcUser) oauth2User).getIdToken();
+        }
+        return null;
+    }
 
     @Override
     public String getName() { return user.getEmail(); }
