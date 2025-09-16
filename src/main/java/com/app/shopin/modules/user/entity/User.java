@@ -2,6 +2,7 @@ package com.app.shopin.modules.user.entity;
 
 // import com.app.shopin.entity.employee.Employee;
 import com.app.shopin.modules.security.entity.Rol;
+import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -34,6 +35,9 @@ public class User {
     private String email;
     @Column(nullable = false)
     private String password;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<SocialLink> socialLinks = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(joinColumns = @JoinColumn(name = "user_id"),
@@ -144,6 +148,14 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public Set<SocialLink> getSocialLinks() {
+        return socialLinks;
+    }
+
+    public void setSocialLinks(Set<SocialLink> socialLinks) {
+        this.socialLinks = socialLinks;
     }
 
     public Integer getTokenVersion() {
