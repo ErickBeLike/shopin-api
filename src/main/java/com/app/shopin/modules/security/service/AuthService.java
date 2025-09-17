@@ -3,7 +3,12 @@ package com.app.shopin.modules.security.service;
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.dto.*;
 import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.entity.Rol;
+import com.app.shopin.modules.security.entity.SocialLink;
+import com.app.shopin.modules.security.enums.RolName;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
+import com.app.shopin.modules.user.service.UserService;
+import com.app.shopin.services.cloudinary.StorageService;
 import com.app.shopin.services.email.EmailService;
 import com.app.shopin.util.UserResponse;
 import org.slf4j.Logger;
@@ -48,15 +53,18 @@ public class AuthService {
 
     @Autowired
     JwtProvider jwtProvider;
-
     @Autowired
     TokenBlacklist tokenBlacklist;
 
     @Autowired
     private EmailService emailService;
-
     @Autowired
     private TwoFactorService twoFactorService;
+
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private StorageService storageService;
 
     public record TokenPair(String accessToken, String refreshToken) {}
     private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
@@ -196,6 +204,48 @@ public class AuthService {
             throw new CustomException(HttpStatus.UNAUTHORIZED, "Código de autenticación inválido.");
         }
         return generateTokensForUser(user);
+    }
+
+    public TokenPair createOAuth2UserAndGetTokens(OAuth2TempInfo tempInfo, String username) {
+        // 1. Creamos la entidad User
+        User newUser = new User();
+        newUser.setEmail(tempInfo.email());
+        newUser.setFirstName(tempInfo.firstName());
+        newUser.setLastName(tempInfo.lastName());
+        newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+
+        // 2. Asignamos username y discriminador usando la lógica de UserService
+        newUser.setUsername(username);
+        newUser.setDiscriminator(userService.findNextAvailableDiscriminator(username));
+
+        // 3. Creamos la vinculación social
+        SocialLink newSocialLink = new SocialLink();
+        newSocialLink.setUser(newUser);
+        newSocialLink.setProvider(tempInfo.provider());
+        newSocialLink.setProviderUserId(tempInfo.providerUserId());
+        newUser.getSocialLinks().add(newSocialLink);
+
+        // 4. Asignamos roles
+        Set<Rol> roles = new HashSet<>();
+        roles.add(rolService.getByRolName(RolName.ROLE_USER).orElseThrow());
+        newUser.setRoles(roles);
+
+        // 5. Subimos la foto de perfil a Cloudinary
+        try {
+            if (tempInfo.pictureUrl() != null && !tempInfo.pictureUrl().isEmpty()) {
+                Map<String, String> fileInfo = storageService.uploadFromUrl(tempInfo.pictureUrl(), "profileimages");
+                newUser.setProfilePictureUrl(fileInfo.get("url"));
+                newUser.setProfilePicturePublicId(fileInfo.get("publicId"));
+            }
+        } catch (Exception e) {
+            log.error("Error al subir la imagen de perfil de OAuth2 para el usuario: {}", tempInfo.email(), e);
+        }
+
+        // 6. Guardamos el usuario nuevo y completo
+        User savedUser = userRepository.save(newUser);
+
+        // 7. Generamos la autenticación y los tokens para el nuevo usuario
+        return generateTokensForUser(savedUser);
     }
 
     public JwtDTO refresh(String refreshToken) throws ParseException {

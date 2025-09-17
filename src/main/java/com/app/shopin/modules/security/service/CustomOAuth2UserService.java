@@ -70,6 +70,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         User user = processOAuth2User(provider, providerUserId, email, firstName, lastName, pictureUrl);
+        if (user == null) {
+            return oauth2User;
+        }
+
         return PrincipalUser.build(user, oauth2User);
     }
 
