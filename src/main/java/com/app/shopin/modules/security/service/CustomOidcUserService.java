@@ -2,6 +2,7 @@ package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -16,6 +17,7 @@ public class CustomOidcUserService extends OidcUserService {
     private CustomOAuth2UserService customOAuth2UserService; // Inyectamos el otro servicio para reusar su lógica
 
     @Override
+    @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         OidcUser oidcUser = super.loadUser(userRequest);
         String provider = userRequest.getClientRegistration().getRegistrationId();
