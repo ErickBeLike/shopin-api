@@ -2,6 +2,7 @@ package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -16,17 +17,20 @@ public class CustomOidcUserService extends OidcUserService {
     private CustomOAuth2UserService customOAuth2UserService; // Inyectamos el otro servicio para reusar su lógica
 
     @Override
+    @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         OidcUser oidcUser = super.loadUser(userRequest);
+        String provider = userRequest.getClientRegistration().getRegistrationId();
 
         // Extraemos los datos estandarizados de OIDC
+        String providerUserId = oidcUser.getAttribute("sub");
         String email = oidcUser.getAttribute("email");
         String firstName = oidcUser.getAttribute("given_name");
         String lastName = oidcUser.getAttribute("family_name");
         String pictureUrl = oidcUser.getAttribute("picture");
 
         // Reutilizamos la misma lógica de negocio del otro servicio
-        User user = customOAuth2UserService.processOAuth2User(email, firstName, lastName, pictureUrl);
+        User user = customOAuth2UserService.processOAuth2User(provider, providerUserId, email, firstName, lastName, pictureUrl);
 
         return PrincipalUser.build(user, oidcUser);
     }

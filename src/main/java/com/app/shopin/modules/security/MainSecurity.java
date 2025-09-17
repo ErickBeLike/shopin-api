@@ -1,5 +1,6 @@
 package com.app.shopin.modules.security;
 
+import com.app.shopin.modules.security.jwt.CustomOAuth2FailureHandler;
 import com.app.shopin.modules.security.jwt.JwtEntryPoint;
 import com.app.shopin.modules.security.jwt.JwtTokenFilter;
 import com.app.shopin.modules.security.jwt.OAuth2LoginSuccessHandler;
@@ -17,6 +18,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -47,6 +49,8 @@ public class MainSecurity {
 
     @Autowired
     private OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    @Autowired
+    private CustomOAuth2FailureHandler customOAuth2FailureHandler;
 
     AuthenticationManager authenticationManager;
 
@@ -87,9 +91,10 @@ public class MainSecurity {
                                 .userService(this.customOAuth2UserService)
                         )
                         .successHandler(oAuth2LoginSuccessHandler)
+                        .failureHandler(this.customOAuth2FailureHandler)
                 )
 
-                .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(exc -> exc.authenticationEntryPoint(jwtEntryPoint))
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
