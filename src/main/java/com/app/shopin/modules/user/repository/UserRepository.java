@@ -13,13 +13,17 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByUserName(String userName);
-    boolean existsByUserName(String userName);
 
+    boolean existsByUsername(String username);
     Optional<User> findByEmail(String email);
+
+    @Query("SELECT u.discriminator FROM User u WHERE u.username = :username")
+    List<String> findDiscriminatorsByUsername(@Param("username") String username);
+    Optional<User> findByUsernameAndDiscriminator(String username, String discriminator);
+
+
     boolean existsByEmail(String email);
 
-    Optional<User> findByUserNameOrEmail(String userName, String email);
     Optional<User> findByPasswordResetCode(String code);
 
     @Modifying
@@ -29,7 +33,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findUsersForPermanentDeletion(@Param("date") LocalDateTime date);
 
     @Query(value = "SELECT * FROM users WHERE (user_name = :input OR email = :input) AND deleted_at IS NOT NULL", nativeQuery = true)
-    Optional<User> findInactiveByUsernameOrEmail(@Param("input") String input);
+    Optional<User> findInactiveByEmail(@Param("input") String input);
     @Modifying
     @Query(value = "UPDATE users SET deleted_at = NULL WHERE user_id = :id", nativeQuery = true)
     void reactivateUserById(@Param("id") Long id);

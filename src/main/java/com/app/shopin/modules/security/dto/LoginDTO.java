@@ -1,21 +1,23 @@
 package com.app.shopin.modules.security.dto;
 
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 public class LoginDTO {
-    @NotBlank(message = "nombre de usuario/email obligatorio")
-    private String usernameOrEmail;
+    @NotBlank(message = "El email es obligatorio")
+    @Email(message = "El formato del email no es válido")
+    private String email;
 
     @NotBlank(message = "contraseña obligatoria")
     private String password;
 
-    public String getUsernameOrEmail() {
-        return usernameOrEmail;
+    public @NotBlank(message = "El email es obligatorio") @Email(message = "El formato del email no es válido") String getEmail() {
+        return email;
     }
 
-    public void setUsernameOrEmail(String usernameOrEmail) {
-        this.usernameOrEmail = usernameOrEmail;
+    public void setEmail(@NotBlank(message = "El email es obligatorio") @Email(message = "El formato del email no es válido") String email) {
+        this.email = email;
     }
 
     public String getPassword() {

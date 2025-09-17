@@ -107,7 +107,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         newUser.setEmail(email);
         newUser.setFirstName(firstName);
         newUser.setLastName(lastName);
-        newUser.setUserName(email); // O tu lógica de username generado
         newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
         try {

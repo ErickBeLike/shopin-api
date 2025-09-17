@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PrincipalUser implements UserDetails, OidcUser {
-    private String userName;
     private String password;
     private Integer tokenVersion;
     private Collection<? extends GrantedAuthority> authorities;
@@ -27,7 +26,6 @@ public class PrincipalUser implements UserDetails, OidcUser {
 
     public PrincipalUser(User user, Collection<? extends GrantedAuthority> authorities, OAuth2User oauth2User) {
         this.user = user;
-        this.userName = user.getUserName();
         this.password = user.getPassword();
         this.tokenVersion = user.getTokenVersion();
         this.authorities = authorities;
@@ -97,7 +95,7 @@ public class PrincipalUser implements UserDetails, OidcUser {
 
     @Override
     public String getUsername() {
-        return userName;
+        return user.getEmail();
     }
 
     @Override

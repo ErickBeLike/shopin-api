@@ -30,17 +30,17 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
-        // Obtenemos el usuario de OAuth2 que nos da Spring.
-        OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
-
         // Llamamos a los nuevos métodos del JwtProvider que saben cómo manejar un OAuth2User.
-        String accessToken = jwtProvider.generateAccessToken(oauth2User);
-        String refreshToken = jwtProvider.generateRefreshToken(oauth2User);
+        String accessToken = jwtProvider.generateAccessToken(authentication);
+        String refreshToken = jwtProvider.generateRefreshToken(authentication);
 
         // El resto del código para la cookie y la redirección es el mismo.
         Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
+
+        // TODO CHANGE TO TRUE IN PRODUCTION
         refreshTokenCookie.setSecure(false);
+
         refreshTokenCookie.setPath("/api/auth/refresh");
         refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60);
         response.addCookie(refreshTokenCookie);
