@@ -1,6 +1,7 @@
 package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.exception.CustomOAuth2AuthenticationException;
+import com.app.shopin.modules.security.dto.OAuth2TempInfo;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.entity.SocialLink;
@@ -9,6 +10,7 @@ import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.SocialLinkRepository;
 import com.app.shopin.modules.user.repository.UserRepository;
 import com.app.shopin.services.cloudinary.StorageService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -30,6 +32,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private UserRepository userRepository;
     @Autowired
     private SocialLinkRepository socialLinkRepository;
+
+    @Autowired
+    private HttpServletRequest request;
 
     @Autowired
     private RolService rolService;
@@ -103,30 +108,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         // Flujo 3: Es un usuario completamente nuevo. Creamos tod0.
-        User newUser = new User();
-        newUser.setEmail(email);
-        newUser.setFirstName(firstName);
-        newUser.setLastName(lastName);
-        newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        OAuth2TempInfo tempInfo = new OAuth2TempInfo(provider, providerUserId, email, firstName, lastName, pictureUrl);
+        request.getSession().setAttribute("OAUTH2_TEMP_INFO", tempInfo);
 
-        try {
-            if (pictureUrl != null && !pictureUrl.isEmpty()) {
-                Map<String, String> fileInfo = storageService.uploadFromUrl(pictureUrl, "profileimages");
-                newUser.setProfilePictureUrl(fileInfo.get("url"));
-                newUser.setProfilePicturePublicId(fileInfo.get("publicId"));
-            }
-        } catch (Exception e) { /* Manejar error */ }
-
-        Set<Rol> roles = new HashSet<>();
-        roles.add(rolService.getByRolName(RolName.ROLE_USER).orElseThrow());
-        newUser.setRoles(roles);
-
-        SocialLink newSocialLink = new SocialLink();
-        newSocialLink.setUser(newUser);
-        newSocialLink.setProvider(provider);
-        newSocialLink.setProviderUserId(providerUserId);
-        newUser.getSocialLinks().add(newSocialLink);
-
-        return userRepository.save(newUser);
+        return null;
     }
 }

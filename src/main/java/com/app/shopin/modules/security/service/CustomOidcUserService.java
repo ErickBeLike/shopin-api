@@ -29,8 +29,11 @@ public class CustomOidcUserService extends OidcUserService {
         String lastName = oidcUser.getAttribute("family_name");
         String pictureUrl = oidcUser.getAttribute("picture");
 
-        // Reutilizamos la misma lógica de negocio del otro servicio
         User user = customOAuth2UserService.processOAuth2User(provider, providerUserId, email, firstName, lastName, pictureUrl);
+
+        if (user == null) {
+            return oidcUser;
+        }
 
         return PrincipalUser.build(user, oidcUser);
     }
