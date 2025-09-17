@@ -99,10 +99,11 @@ public class AuthController {
         // 2. Obtenemos detalles del usuario autenticado para la respuesta.
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
+        User user = principal.getUser();
         List<String> roles = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList());
 
         // 3. Construimos el cuerpo de la respuesta JSON.
-        LoginResponseDTO loginResponse = new LoginResponseDTO(tokenPair.accessToken(), principal.getUsername(), roles);
+        LoginResponseDTO loginResponse = new LoginResponseDTO(tokenPair.accessToken(), user.getFullTag(), roles);
 
         return ResponseEntity.ok(loginResponse);
     }

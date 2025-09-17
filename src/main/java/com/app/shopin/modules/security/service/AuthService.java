@@ -61,14 +61,6 @@ public class AuthService {
     public record TokenPair(String accessToken, String refreshToken) {}
     private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
 
-    public Optional<User> getByUserName(String userName) {
-        return userRepository.findByUserName(userName);
-    }
-
-    public boolean existsByUserName(String userName) {
-        return userRepository.existsByUserName(userName);
-    }
-
     public UserResponse requestPasswordReset(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No existe un usuario con ese correo electrónico."));
@@ -103,7 +95,7 @@ public class AuthService {
         }
 
         // 3. Generar el token de validación temporal
-        String validationToken = jwtProvider.generateTokenWithExpiration(user.getUserName(), VALIDATION_TOKEN_DURATION);
+        String validationToken = jwtProvider.generateTokenWithExpiration(user.getEmail(), VALIDATION_TOKEN_DURATION);
 
         return new ValidationResponseDTO(validationToken, "Código validado correctamente.");
     }
@@ -116,8 +108,8 @@ public class AuthService {
         }
 
         // 2. Extraer el username del token y buscar al usuario
-        String username = jwtProvider.getNombreUsuarioFromToken(validationToken);
-        User user = userRepository.findByUserName(username)
+        String email = jwtProvider.getEmailFromToken(validationToken);
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Usuario no encontrado."));
 
         // 3. Validar y actualizar la nueva contraseña
@@ -141,7 +133,7 @@ public class AuthService {
 
     public User authenticateAndGetUser(LoginDTO loginDTO) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDTO.getUsernameOrEmail(), loginDTO.getPassword()));
+                new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
         return principal.getUser();
@@ -177,8 +169,8 @@ public class AuthService {
     }
 
     public TokenPair verifyEmailCodeAndLogin(LoginTwoFactorRequestDTO dto) {
-        String identifier = dto.usernameOrEmail();
-        User user = userRepository.findByUserNameOrEmail(identifier, identifier)
+        String email = dto.email();
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas."));
 
         if (!user.isTwoFactorEmailEnabled() ||
@@ -196,8 +188,8 @@ public class AuthService {
 
     // 2FA APP SECTION
     public TokenPair verifyAppCodeAndLogin(LoginTwoFactorRequestDTO dto) {
-        String identifier = dto.usernameOrEmail();
-        User user = userRepository.findByUserNameOrEmail(identifier, identifier)
+        String email = dto.email();
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas."));
 
         if (!user.isTwoFactorAppEnabled() || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), dto.code())) {

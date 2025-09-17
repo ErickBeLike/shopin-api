@@ -23,16 +23,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional
-    public UserDetails loadUserByUsername(String userInput) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
         // 1. Intenta encontrar al usuario de forma normal (activo)
-        Optional<User> activeUser = userRepository.findByUserNameOrEmail(userInput, userInput);
+        Optional<User> activeUser = userRepository.findByEmail(email);
         if (activeUser.isPresent()) {
             return PrincipalUser.build(activeUser.get());
         }
 
         // 2. Si no se encuentra, busca un usuario inactivo
-        Optional<User> inactiveUser = userRepository.findInactiveByUsernameOrEmail(userInput);
+        Optional<User> inactiveUser = userRepository.findInactiveByEmail(email);
 
         // 3. Si se encuentra un usuario inactivo, reactívalo
         if (inactiveUser.isPresent()) {
@@ -44,14 +44,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
             // 5. Retorna el usuario reactivado para el login
             // Debes obtener la instancia reactivada para asegurarte de que el estado es correcto
-            User reactivatedUser = userRepository.findByUserNameOrEmail(userInput, userInput)
-                    .orElseThrow(() -> new UsernameNotFoundException("Error al reactivar y encontrar usuario: " + userInput));
+            User reactivatedUser = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("Error al reactivar y encontrar usuario: " + email));
 
             return PrincipalUser.build(reactivatedUser);
         }
 
         // 6. Si no se encuentra ni activo ni inactivo, lanza la excepción
-        throw new UsernameNotFoundException("Usuario no encontrado: " + userInput);
+        throw new UsernameNotFoundException("Usuario no encontrado: " + email);
     }
 
 }

@@ -45,8 +45,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             String token = getToken(req);
             // Usamos el nuevo método que valida all de una vez
             if (token != null && jwtProvider.validateTokenAndVersion(token) && !tokenBlacklist.contains(token)) {
-                String nombreUsuario = jwtProvider.getNombreUsuarioFromToken(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(nombreUsuario);
+                String email = jwtProvider.getEmailFromToken(token);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

@@ -127,9 +127,6 @@ public class UserService {
     public UserResponse save(NewUserDTO dto,
                              MultipartFile profileImage) {
         // 1) Validaciones de existencia
-        if (userRepository.existsByUserName(dto.getUserName())) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "ese nombre de usuario ya existe");
-        }
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "ese correo ya está en uso");
         }
@@ -141,18 +138,21 @@ public class UserService {
         }
 
         // 3) Crear entidad User
-        User user = new User(
-                dto.getUserName(),
-                dto.getEmail(),
-                passwordEncoder.encode(rawPassword)
-        );
-
+        User user = new User();
+        user.setEmail(dto.getEmail());
+        user.setPassword(passwordEncoder.encode(rawPassword));
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
-
         if (dto.getPhone() != null && !dto.getPhone().trim().isEmpty()) {
             user.setPhone(dto.getPhone());
         }
+
+        String displayName = (dto.getUsername() == null || dto.getUsername().trim().isEmpty())
+                ? dto.getFirstName().trim() // Default al primer nombre si el username viene vacío
+                : dto.getUsername().trim();
+
+        user.setUsername(displayName);
+        user.setDiscriminator(findNextAvailableDiscriminator(displayName)); // Asignamos su tag único
 
         // 4) Asignar roles
         Set<Rol> roles = new HashSet<>();
@@ -196,7 +196,7 @@ public class UserService {
         }
 
         userRepository.save(user);
-        return new UserResponse(user.getUserName() + " ha sido creado");
+        return new UserResponse("Usuario " + user.getFullTag() + " ha sido creado");
     }
 
     public UserResponse updateUser(Long id,
@@ -229,14 +229,10 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(rawPassword));
 
         // 4) Actualizar userName
-        if (!dto.getUserName().equals(user.getUserName())) {
-            if (userRepository.existsByUserName(dto.getUserName())) {
-                throw new CustomException(
-                        HttpStatus.BAD_REQUEST,
-                        "ese nombre de usuario ya existe"
-                );
-            }
-            user.setUserName(dto.getUserName());
+        if (dto.getUsername() != null && !dto.getUsername().trim().isEmpty() && !dto.getUsername().trim().equalsIgnoreCase(user.getUsername())) {
+            String newUsername = dto.getUsername().trim();
+            user.setUsername(newUsername);
+            user.setDiscriminator(findNextAvailableDiscriminator(newUsername));
         }
 
         user.setFirstName(dto.getFirstName());
@@ -295,7 +291,7 @@ public class UserService {
         user.incrementTokenVersion();
         userRepository.save(user);
         return new UserResponse(
-                user.getUserName() +
+                user.getUsername() +
                         " ha sido actualizado correctamente. Por seguridad, su sesión actual se invalidará; por favor, inicie sesión de nuevo.");
     }
 
@@ -322,6 +318,18 @@ public class UserService {
         return response;
     }
 
+    private String findNextAvailableDiscriminator(String username) {
+        List<String> usedDiscriminators = userRepository.findDiscriminatorsByUsername(username);
+        Set<String> usedSet = new HashSet<>(usedDiscriminators);
+        for (int i = 1; i <= 9999; i++) {
+            String newDiscriminator = String.format("%04d", i);
+            if (!usedSet.contains(newDiscriminator)) {
+                return newDiscriminator;
+            }
+        }
+        throw new CustomException(HttpStatus.CONFLICT, "No hay más discriminadores disponibles para este nombre de usuario.");
+    }
+
     //  METHOD FOT UPDATE USER DATA
     public UserResponse updateUserProfile(Long id, UpdateUserDataDTO dto) {
         // 1. Buscar al usuario
@@ -338,7 +346,7 @@ public class UserService {
         // 4. Guardar los cambios (el @PreUpdate actualizará el `updatedAt`)
         userRepository.save(user);
 
-        return new UserResponse("El perfil de " + user.getUserName() + " ha sido actualizado.");
+        return new UserResponse("El perfil de " + user.getUsername() + " ha sido actualizado.");
     }
 
     public UserResponse updateProfileImage(Long id, MultipartFile profileImage) {
@@ -365,7 +373,7 @@ public class UserService {
         }
 
         userRepository.save(user);
-        return new UserResponse("Imagen de perfil de " + user.getUserName() + " actualizada.");
+        return new UserResponse("Imagen de perfil de " + user.getUsername() + " actualizada.");
     }
 
     public UserResponse deleteProfileImage(Long id) {
@@ -387,30 +395,21 @@ public class UserService {
 
     // METHOD FOR UPDATE USER USERNAME
     public UserResponse updateUsername(Long id, UpdateUsernameDTO dto) {
-        // 1. Buscar al usuario
         User user = findUserById(id);
         String newUsername = dto.userName().trim();
 
-        // 2. Validar si hay cambios
-        if (newUsername.equalsIgnoreCase(user.getUserName())) {
+        if (newUsername.equalsIgnoreCase(user.getUsername())) {
             return new UserResponse("El nuevo nombre de usuario es el mismo que el actual.");
         }
 
-        // 3. Validar si ya existe
-        if (userRepository.existsByUserName(newUsername)) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "Ese nombre de usuario ya existe");
-        }
+        // Al cambiar el nombre, le asignamos un nuevo #XXXX para ese nuevo nombre
+        user.setUsername(newUsername);
+        user.setDiscriminator(findNextAvailableDiscriminator(newUsername));
 
-        // 4. Actualizar
-        user.setUserName(newUsername);
-
-        // 5. Invalidar sesión por seguridad
         user.incrementTokenVersion();
-
-        // 6. Guardar
         userRepository.save(user);
 
-        return new UserResponse("Nombre de usuario actualizado. Por seguridad, por favor inicie sesión de nuevo.");
+        return new UserResponse("Nombre de usuario actualizado a: " + user.getFullTag() + ". Por seguridad, por favor inicie sesión de nuevo.");
     }
 
     // METHOD FOR UPDATE USER EMAIL

@@ -1,5 +1,6 @@
 package com.app.shopin.modules.user.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -8,8 +9,9 @@ import java.util.Set;
 public class NewUserDTO {
     private MultipartFile profileImage;
     @NotBlank(message = "nombre de usuario obligatorio")
-    private String userName;
-    @NotBlank
+    private String username;
+    @NotBlank(message = "El email es obligatorio")
+    @Email(message = "Debe ser una dirección de correo válida")
     private String email;
     @NotBlank
     private String password;
@@ -27,7 +29,7 @@ public class NewUserDTO {
     }
 
     public NewUserDTO(MultipartFile profileImage,
-                      String userName,
+                      String username,
                       String email,
                       String password,
                       Set<String> roles,
@@ -35,7 +37,7 @@ public class NewUserDTO {
                       String lastName,
                       String phone) {
         this.profileImage = profileImage;
-        this.userName = userName;
+        this.username = username;
         this.email = email;
         this.password = password;
         this.roles = roles;
@@ -44,12 +46,12 @@ public class NewUserDTO {
         this.phone = phone;
     }
 
-    public @NotBlank(message = "nombre de usuario obligatorio") String getUserName() {
-        return userName;
+    public @NotBlank(message = "nombre de usuario obligatorio") String getUsername() {
+        return username;
     }
 
-    public void setUserName(@NotBlank(message = "nombre de usuario obligatorio") String userName) {
-        this.userName = userName;
+    public void setUserName(@NotBlank(message = "nombre de usuario obligatorio") String username) {
+        this.username = username;
     }
 
     public @NotBlank String getEmail() {

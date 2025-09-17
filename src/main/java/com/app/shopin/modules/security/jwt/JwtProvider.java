@@ -84,9 +84,9 @@ public class JwtProvider {
     public String refreshAccessToken(String refreshToken) {
         try {
             Claims claims = getAllClaimsFromToken(refreshToken);
-            String username = claims.getSubject();
+            String email = claims.getSubject();
 
-            User user = userRepository.findByUserName(username)
+            User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
             // Recreamos el objeto Authentication para generar un nuevo Access Token
@@ -145,7 +145,7 @@ public class JwtProvider {
                 .getBody();
     }
 
-    public String getNombreUsuarioFromToken(String token) {
+    public String getEmailFromToken(String token) {
         return getAllClaimsFromToken(token).getSubject();
     }
 
@@ -167,13 +167,13 @@ public class JwtProvider {
                     .getBody();
 
             Integer tokenVersionFromJwt = claims.get("tv", Integer.class);
-            String username = claims.getSubject();
+            String email = claims.getSubject();
 
-            if (tokenVersionFromJwt == null || username == null) {
+            if (tokenVersionFromJwt == null || email == null) {
                 return false;
             }
 
-            User user = userRepository.findByUserName(username)
+            User user = userRepository.findByEmail(email)
                     .orElse(null);
 
             return user != null && tokenVersionFromJwt.equals(user.getTokenVersion());
@@ -190,9 +190,9 @@ public class JwtProvider {
         return jws.getPayload().getExpiration().toInstant().getEpochSecond();
     }
 
-    public String generateTokenWithExpiration(String username, long expirationInMillis) {
+    public String generateTokenWithExpiration(String email, long expirationInMillis) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("sub", username);
+        claims.put("sub", email);
         // No añadimos roles ni tokenVersion a este token simple
         claims.put("iat", Instant.now().getEpochSecond());
         claims.put("exp", Instant.now().plusMillis(expirationInMillis).getEpochSecond());

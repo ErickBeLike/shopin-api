@@ -17,7 +17,7 @@ public class EmailService {
     private JavaMailSender javaMailSender;
 
     private String buildPersonalizedGreeting(User user) {
-        return String.format("%s %s (%s)", user.getFirstName(), user.getLastName(), user.getUserName());
+        return String.format("%s %s (%s)", user.getFirstName(), user.getLastName(), user.getUsername());
     }
 
     public void sendLoginNotification(User user) {

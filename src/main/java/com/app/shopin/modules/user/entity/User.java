@@ -28,9 +28,12 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String profilePicturePublicId;
 
+    @Column(nullable = false)
+    private String username;
+    @Column(nullable = false, length = 4)
+    private String discriminator;
+
     // THESE ATTRIBUTES ARE IMPORTANT FOR THE SECURITY MODULE
-    @Column(nullable = false, unique = true)
-    private String userName;
     @Column(nullable = false, unique = true)
     private String email;
     @Column(nullable = false)
@@ -112,10 +115,14 @@ public class User {
     public User() {
     }
 
-    public User(@NotBlank String userName, @NotBlank String email, @NotBlank String password) {
-        this.userName = userName;
+    public User(@NotBlank String email, @NotBlank String password) {
         this.email = email;
         this.password = password;
+    }
+
+    @Transient
+    public String getFullTag() {
+        return this.username + "#" + this.discriminator;
     }
 
     public Long getUserId() {
@@ -126,12 +133,20 @@ public class User {
         this.userId = userId;
     }
 
-    public String getUserName() {
-        return userName;
+    public String getUsername() {
+        return username;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getDiscriminator() {
+        return discriminator;
+    }
+
+    public void setDiscriminator(String discriminator) {
+        this.discriminator = discriminator;
     }
 
     public String getEmail() {
