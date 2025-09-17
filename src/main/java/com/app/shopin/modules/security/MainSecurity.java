@@ -1,5 +1,6 @@
 package com.app.shopin.modules.security;
 
+import com.app.shopin.modules.security.jwt.CustomOAuth2FailureHandler;
 import com.app.shopin.modules.security.jwt.JwtEntryPoint;
 import com.app.shopin.modules.security.jwt.JwtTokenFilter;
 import com.app.shopin.modules.security.jwt.OAuth2LoginSuccessHandler;
@@ -47,6 +48,8 @@ public class MainSecurity {
 
     @Autowired
     private OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    @Autowired
+    private CustomOAuth2FailureHandler customOAuth2FailureHandler;
 
     AuthenticationManager authenticationManager;
 
@@ -87,6 +90,7 @@ public class MainSecurity {
                                 .userService(this.customOAuth2UserService)
                         )
                         .successHandler(oAuth2LoginSuccessHandler)
+                        .failureHandler(this.customOAuth2FailureHandler)
                 )
 
                 .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))

@@ -18,15 +18,17 @@ public class CustomOidcUserService extends OidcUserService {
     @Override
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         OidcUser oidcUser = super.loadUser(userRequest);
+        String provider = userRequest.getClientRegistration().getRegistrationId();
 
         // Extraemos los datos estandarizados de OIDC
+        String providerUserId = oidcUser.getAttribute("sub");
         String email = oidcUser.getAttribute("email");
         String firstName = oidcUser.getAttribute("given_name");
         String lastName = oidcUser.getAttribute("family_name");
         String pictureUrl = oidcUser.getAttribute("picture");
 
         // Reutilizamos la misma lógica de negocio del otro servicio
-        User user = customOAuth2UserService.processOAuth2User(email, firstName, lastName, pictureUrl);
+        User user = customOAuth2UserService.processOAuth2User(provider, providerUserId, email, firstName, lastName, pictureUrl);
 
         return PrincipalUser.build(user, oidcUser);
     }

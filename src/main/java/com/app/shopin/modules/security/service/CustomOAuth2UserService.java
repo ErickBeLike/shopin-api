@@ -1,12 +1,18 @@
 package com.app.shopin.modules.security.service;
 
+import com.app.shopin.modules.exception.CustomOAuth2AuthenticationException;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.entity.Rol;
+import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.RolName;
 import com.app.shopin.modules.user.entity.User;
+import com.app.shopin.modules.user.repository.SocialLinkRepository;
 import com.app.shopin.modules.user.repository.UserRepository;
 import com.app.shopin.services.cloudinary.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -14,16 +20,16 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private SocialLinkRepository socialLinkRepository;
+
     @Autowired
     private RolService rolService;
     @Autowired
@@ -35,8 +41,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
 
         OAuth2User oauth2User = super.loadUser(userRequest);
+        String provider = userRequest.getClientRegistration().getRegistrationId();
 
         Map<String, Object> attributes = oauth2User.getAttributes();
+        String providerUserId = attributes.get("id").toString();
         String email = attributes.get("email").toString();
         String name = attributes.get("name").toString();
         String[] names = name.split(" ");
@@ -54,39 +62,70 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
         }
 
-        User user = processOAuth2User(email, firstName, lastName, pictureUrl);
+        User user = processOAuth2User(provider, providerUserId, email, firstName, lastName, pictureUrl);
         return PrincipalUser.build(user, oauth2User);
     }
 
-    public User processOAuth2User(String email, String firstName, String lastName, String pictureUrl) {
-        return userRepository.findByEmail(email).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setFirstName(firstName);
-            newUser.setLastName(lastName);
-            // Usamos el email como username por defecto, ya que es único
-            newUser.setUserName(email);
-            // Creamos una contraseña aleatoria, ya que este usuario no la usará
-            newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+    public User processOAuth2User(String provider, String providerUserId, String email, String firstName, String lastName, String pictureUrl) {
 
-            // Subir la imagen de perfil a Cloudinary si existe
-            try {
-                if (pictureUrl != null && !pictureUrl.isEmpty()) {
-                    Map<String, String> fileInfo = storageService.uploadFromUrl(pictureUrl, "profileimages");
-                    newUser.setProfilePictureUrl(fileInfo.get("url"));
-                    newUser.setProfilePicturePublicId(fileInfo.get("publicId"));
-                }
-            } catch (Exception e) {
-                // Manejar la excepción, por ejemplo, logueándola.
+        // Flujo 1: ¿El usuario ya está logueado? (Quiere VINCULAR una cuenta)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)) {
+            PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
+            User currentUser = principal.getUser();
+
+            if (socialLinkRepository.findByProviderAndProviderUserId(provider, providerUserId).isPresent()) {
+                throw new CustomOAuth2AuthenticationException("Esta cuenta de " + provider + " ya está vinculada a otro usuario.");
             }
 
-            Set<Rol> roles = new HashSet<>();
-            Rol userRole = rolService.getByRolName(RolName.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("FATAL: Rol 'ROLE_USER' no encontrado."));
-            roles.add(userRole);
-            newUser.setRoles(roles);
+            SocialLink newSocialLink = new SocialLink();
+            newSocialLink.setUser(currentUser);
+            newSocialLink.setProvider(provider);
+            newSocialLink.setProviderUserId(providerUserId);
+            socialLinkRepository.save(newSocialLink);
 
-            return userRepository.save(newUser);
-        });
+            return currentUser;
+        }
+
+        // Flujo 2: El usuario NO está logueado (Quiere INICIAR SESIÓN o REGISTRARSE)
+        Optional<SocialLink> socialLinkOptional = socialLinkRepository.findByProviderAndProviderUserId(provider, providerUserId);
+        if (socialLinkOptional.isPresent()) {
+            // El usuario ya existe a través de esta vinculación social. Lo logueamos.
+            return socialLinkOptional.get().getUser();
+        }
+
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            // El email existe, pero no está vinculado a esta cuenta social. Lanzamos error.
+            throw new CustomOAuth2AuthenticationException("Ya existe una cuenta con el correo " + email + ". Por favor, inicie sesión con su método original para vincular su cuenta de " + provider + ".");
+        }
+
+        // Flujo 3: Es un usuario completamente nuevo. Creamos tod0.
+        User newUser = new User();
+        newUser.setEmail(email);
+        newUser.setFirstName(firstName);
+        newUser.setLastName(lastName);
+        newUser.setUserName(email); // O tu lógica de username generado
+        newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+
+        try {
+            if (pictureUrl != null && !pictureUrl.isEmpty()) {
+                Map<String, String> fileInfo = storageService.uploadFromUrl(pictureUrl, "profileimages");
+                newUser.setProfilePictureUrl(fileInfo.get("url"));
+                newUser.setProfilePicturePublicId(fileInfo.get("publicId"));
+            }
+        } catch (Exception e) { /* Manejar error */ }
+
+        Set<Rol> roles = new HashSet<>();
+        roles.add(rolService.getByRolName(RolName.ROLE_USER).orElseThrow());
+        newUser.setRoles(roles);
+
+        SocialLink newSocialLink = new SocialLink();
+        newSocialLink.setUser(newUser);
+        newSocialLink.setProvider(provider);
+        newSocialLink.setProviderUserId(providerUserId);
+        newUser.getSocialLinks().add(newSocialLink);
+
+        return userRepository.save(newUser);
     }
 }
