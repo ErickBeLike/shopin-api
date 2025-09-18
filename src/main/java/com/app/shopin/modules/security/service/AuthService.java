@@ -206,31 +206,34 @@ public class AuthService {
         return generateTokensForUser(user);
     }
 
-    public TokenPair createOAuth2UserAndGetTokens(OAuth2TempInfo tempInfo, String username) {
-        // 1. Creamos la entidad User
+    public TokenPair createOAuth2UserAndGetTokens(String registrationToken, String username) {
+        // 1. Validamos el token y extraemos la información del usuario
+        OAuth2TempInfo tempInfo = jwtProvider.getRegistrationInfoFromToken(registrationToken);
+
+        // 2. Creamos la entidad User
         User newUser = new User();
         newUser.setEmail(tempInfo.email());
         newUser.setFirstName(tempInfo.firstName());
         newUser.setLastName(tempInfo.lastName());
         newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
-        // 2. Asignamos username y discriminador usando la lógica de UserService
+        // 3. Asignamos username y discriminador
         newUser.setUsername(username);
         newUser.setDiscriminator(userService.findNextAvailableDiscriminator(username));
 
-        // 3. Creamos la vinculación social
+        // 4. Creamos la vinculación social
         SocialLink newSocialLink = new SocialLink();
         newSocialLink.setUser(newUser);
         newSocialLink.setProvider(tempInfo.provider());
         newSocialLink.setProviderUserId(tempInfo.providerUserId());
         newUser.getSocialLinks().add(newSocialLink);
 
-        // 4. Asignamos roles
+        // 5. Asignamos roles
         Set<Rol> roles = new HashSet<>();
         roles.add(rolService.getByRolName(RolName.ROLE_USER).orElseThrow());
         newUser.setRoles(roles);
 
-        // 5. Subimos la foto de perfil a Cloudinary
+        // 6. Subimos la foto de perfil
         try {
             if (tempInfo.pictureUrl() != null && !tempInfo.pictureUrl().isEmpty()) {
                 Map<String, String> fileInfo = storageService.uploadFromUrl(tempInfo.pictureUrl(), "profileimages");
@@ -241,10 +244,15 @@ public class AuthService {
             log.error("Error al subir la imagen de perfil de OAuth2 para el usuario: {}", tempInfo.email(), e);
         }
 
-        // 6. Guardamos el usuario nuevo y completo
+        // 7. Guardamos el usuario nuevo y completo
         User savedUser = userRepository.save(newUser);
 
-        // 7. Generamos la autenticación y los tokens para el nuevo usuario
+        // 8. Creamos la autenticación para el nuevo usuario
+        PrincipalUser principal = PrincipalUser.build(savedUser);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // 9. Generamos los tokens de sesión finales
         return generateTokensForUser(savedUser);
     }
 

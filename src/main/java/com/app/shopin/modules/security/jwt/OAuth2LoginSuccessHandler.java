@@ -1,7 +1,12 @@
 package com.app.shopin.modules.security.jwt;
 
 import com.app.shopin.modules.security.dto.OAuth2TempInfo;
+import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.service.UserDetailsServiceImpl;
+import com.app.shopin.modules.user.entity.User;
+import com.app.shopin.modules.user.repository.SocialLinkRepository;
+import com.app.shopin.modules.user.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +22,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -27,39 +34,39 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     @Autowired
     private JwtProvider jwtProvider;
 
-    // YA NO NECESITAMOS UserDetailsServiceImpl aquí
+    @Autowired
+    private SocialLinkRepository socialLinkRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
-        // 1. Revisamos la sesión para ver si es un registro incompleto
-        OAuth2TempInfo tempInfo = (OAuth2TempInfo) request.getSession().getAttribute("OAUTH2_TEMP_INFO");
+        PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
+        User user = principal.getUser();
 
-        if (tempInfo != null) {
-            // 2. Si SÍ es incompleto, lo redirigimos al formulario de finalización en el frontend.
-            // Limpiamos el atributo para que no se quede en la sesión.
+        if ("PENDING_REGISTRATION".equals(user.getEmail())) {
+            OAuth2TempInfo tempInfo = (OAuth2TempInfo) request.getSession().getAttribute("OAUTH2_TEMP_INFO");
             request.getSession().removeAttribute("OAUTH2_TEMP_INFO");
 
-            String targetUrl = UriComponentsBuilder.fromUriString(frontendRedirectUrl)
-                    .path("/complete-registration") // Nueva ruta en tu frontend
-                    .queryParam("provider", tempInfo.provider()) // Le pasamos info útil
-                    .queryParam("name", tempInfo.firstName())
-                    .build().toUriString();
+            if (tempInfo != null) {
+                String registrationToken = jwtProvider.generateRegistrationToken(tempInfo);
+                String targetUrl = UriComponentsBuilder.fromUriString(frontendRedirectUrl)
+                        .path("/complete-registration")
+                        .queryParam("token", registrationToken)
+                        .build().toUriString();
 
-            getRedirectStrategy().sendRedirect(request, response, targetUrl);
-            return; // Detenemos el proceso aquí.
+                getRedirectStrategy().sendRedirect(request, response, targetUrl);
+                return;
+            }
         }
 
-        // 3. Si NO es incompleto, es un login normal. Generamos el JWT.
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = jwtProvider.generateRefreshToken(authentication);
 
         Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
-
-        // TODO CHANGE TO TRUE IN PRODUCTION
-        refreshTokenCookie.setSecure(true);
-
+        refreshTokenCookie.setSecure(true); // ¡True en producción!
         refreshTokenCookie.setPath("/api/auth/refresh");
         refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60);
         response.addCookie(refreshTokenCookie);
@@ -67,4 +74,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String redirectUrl = frontendRedirectUrl + "?token=" + accessToken;
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
+
+    // EN ESTE VEO QUE EN LO QUE ME DISTE HAY OTRO MÉTODO ACÁ PERO ESE NO LO TENGO
 }
