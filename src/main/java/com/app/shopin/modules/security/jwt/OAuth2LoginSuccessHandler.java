@@ -61,12 +61,29 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             }
         }
 
+        String flowType = (String) request.getSession().getAttribute("OAUTH2_FLOW_TYPE");
+        if ("LINKING".equals(flowType)) {
+            request.getSession().removeAttribute("OAUTH2_FLOW_TYPE"); // Limpiamos la nota
+
+            // Redirigimos a una URL de éxito de vinculación, por ejemplo, al perfil.
+            String targetUrl = UriComponentsBuilder.fromUriString(frontendRedirectUrl)
+                    .path("/profile") // O a la ruta de configuración que prefieras
+                    .queryParam("link_success", "true") // Parámetro para que el frontend muestre un mensaje
+                    .build().toUriString();
+
+            getRedirectStrategy().sendRedirect(request, response, targetUrl);
+            return;
+        }
+
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = jwtProvider.generateRefreshToken(authentication);
 
         Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true); // ¡True en producción!
+
+        // TODO CHANGE TO TRUE IN PRODUCTION
+        refreshTokenCookie.setSecure(true);
+
         refreshTokenCookie.setPath("/api/auth/refresh");
         refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60);
         response.addCookie(refreshTokenCookie);
@@ -75,5 +92,4 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 
-    // EN ESTE VEO QUE EN LO QUE ME DISTE HAY OTRO MÉTODO ACÁ PERO ESE NO LO TENGO
 }
