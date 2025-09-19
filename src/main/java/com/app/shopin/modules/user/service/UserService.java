@@ -318,7 +318,7 @@ public class UserService {
         return response;
     }
 
-    private String findNextAvailableDiscriminator(String username) {
+    public String findNextAvailableDiscriminator(String username) {
         List<String> usedDiscriminators = userRepository.findDiscriminatorsByUsername(username);
         Set<String> usedSet = new HashSet<>(usedDiscriminators);
         for (int i = 1; i <= 9999; i++) {

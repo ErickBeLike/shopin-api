@@ -1,9 +1,11 @@
 package com.app.shopin.modules.security.jwt;
 
 import com.app.shopin.modules.exception.CustomException;
+import com.app.shopin.modules.security.dto.OAuth2TempInfo;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -104,36 +106,6 @@ public class JwtProvider {
         }
     }
 
-    public String generateAccessToken(OAuth2User oauth2User) {
-        String email = oauth2User.getAttribute("email");
-        // Para un usuario de Google, le asignamos el rol por defecto y tokenVersion 0.
-        // Tu CustomOAuth2UserService ya se encarga de guardar esto en la BD.
-        List<String> roles = List.of("ROLE_USER");
-        Integer tokenVersion = 0;
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("sub", email); // Usamos el email como subject
-        claims.put("roles", roles);
-        claims.put("tv", tokenVersion);
-        claims.put("iat", Instant.now().getEpochSecond());
-        claims.put("exp", Instant.now().plusSeconds(accessTokenExpiration).getEpochSecond());
-
-        return Jwts.builder().setClaims(claims).signWith(getSecretKey()).compact();
-    }
-
-    /**
-     * Genera un Refresh Token a partir de un usuario de OAuth2.
-     */
-    public String generateRefreshToken(OAuth2User oauth2User) {
-        String email = oauth2User.getAttribute("email");
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("sub", email);
-        claims.put("iat", Instant.now().getEpochSecond());
-        claims.put("exp", Instant.now().plusSeconds(refreshTokenExpiration).getEpochSecond());
-
-        return Jwts.builder().setClaims(claims).signWith(getSecretKey()).compact();
-    }
-
     /**
      * Extrae los claims aunque el token ya esté expirado.
      */
@@ -201,5 +173,31 @@ public class JwtProvider {
                 .setClaims(claims)
                 .signWith(getSecretKey())
                 .compact();
+    }
+
+    public String generateRegistrationToken(OAuth2TempInfo tempInfo) {
+        Map<String, Object> claims = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> tempInfoMap = mapper.convertValue(tempInfo, Map.class);
+
+        claims.put("registration_info", tempInfoMap);
+        claims.put("iat", Instant.now().getEpochSecond());
+        claims.put("exp", Instant.now().plusSeconds(600).getEpochSecond()); // Válido por 10 minutos
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .signWith(getSecretKey())
+                .compact();
+    }
+
+    public OAuth2TempInfo getRegistrationInfoFromToken(String token) { // ESTE AHORA NO SE ESTÁ USANDO
+        try {
+            Claims claims = getAllClaimsFromToken(token);
+            Map<String, Object> tempInfoMap = (Map<String, Object>) claims.get("registration_info");
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.convertValue(tempInfoMap, OAuth2TempInfo.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Token de registro inválido o expirado.");
+        }
     }
 }

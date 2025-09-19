@@ -9,6 +9,7 @@ import com.app.shopin.modules.security.service.AuthService;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.util.UserResponse;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -126,6 +127,18 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Sesión cerrada correctamente"));
         }
         return ResponseEntity.badRequest().body(Map.of("error", "Token no proporcionado"));
+    }
+
+    @PostMapping("/oauth2/register")
+    public ResponseEntity<LoginResponseDTO> completeOauth2Registration(
+            @Valid @RequestBody CompleteRegistrationDTO dto,
+            HttpServletResponse response) {
+
+        // Ya no se lee de la sesión. Se le pasa el token directamente al servicio.
+        AuthService.TokenPair tokenPair = authService.createOAuth2UserAndGetTokens(dto.registrationToken(), dto.username());
+
+        // El método createLoginSuccessResponse se reutiliza a la perfección.
+        return createLoginSuccessResponse(tokenPair, response);
     }
 
 }
