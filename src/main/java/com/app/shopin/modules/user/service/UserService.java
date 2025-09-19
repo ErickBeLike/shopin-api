@@ -144,6 +144,8 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
+        user.setHasSetLocalPassword(true);
+
         if (dto.getPhone() != null && !dto.getPhone().trim().isEmpty()) {
             user.setPhone(dto.getPhone());
         }
