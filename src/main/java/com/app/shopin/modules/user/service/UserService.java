@@ -6,6 +6,7 @@ import com.app.shopin.modules.security.dto.CodeConfirmationDTO;
 import com.app.shopin.modules.security.dto.PasswordConfirmationDTO;
 import com.app.shopin.modules.security.dto.SetupTwoFactorDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import com.app.shopin.modules.security.service.TwoFactorService;
 import com.app.shopin.modules.user.dto.NewUserDTO;
@@ -612,6 +613,39 @@ public class UserService {
         user.setPreferredTwoFactorMethod(method);
         userRepository.save(user);
         return new UserResponse("Se ha actualizado tu método de autenticación preferido a: " + method);
+    }
+
+    // UN-LINk ACCOUNT
+    public UserResponse unlinkSocialAccount(Long userId, String provider, PasswordConfirmationDTO dto, UserDetails currentUser) {
+        // 1. Verificamos que el usuario tenga permiso para esta acción.
+        checkOwnershipOrAdmin(userId, currentUser);
+
+        User user = findUserById(userId);
+
+        // 2. Verificamos la contraseña del usuario para confirmar la acción.
+        verifyUserPassword(user, dto.password());
+
+        // 3. REGLA DE NEGOCIO CRÍTICA: Evitar que el usuario se quede sin acceso.
+        // Contamos cuántos métodos de login le quedan.
+        boolean hasPassword = user.isHasSetLocalPassword(); // Asumiendo que implementamos la bandera
+        long socialLinkCount = user.getSocialLinks().size();
+
+        // Si solo le queda este link social y no tiene contraseña, no puede borrarlo.
+        if (socialLinkCount <= 1 && !hasPassword) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "No puedes eliminar tu único método de inicio de sesión. Por favor, crea una contraseña primero.");
+        }
+
+        // 4. Buscamos y eliminamos la vinculación.
+        SocialLink linkToRemove = user.getSocialLinks().stream()
+                .filter(link -> link.getProvider().equalsIgnoreCase(provider))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró una vinculación con " + provider + " para este usuario."));
+
+        // Eliminamos el link de la colección y dejamos que JPA se encargue del borrado
+        user.getSocialLinks().remove(linkToRemove);
+        userRepository.save(user); // Guardamos el usuario para que la relación se actualice
+
+        return new UserResponse("La cuenta de " + provider + " ha sido desvinculada exitosamente.");
     }
 
 }
