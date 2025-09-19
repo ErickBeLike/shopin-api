@@ -3,9 +3,7 @@ package com.app.shopin.modules.security.service;
 import com.app.shopin.modules.exception.CustomOAuth2AuthenticationException;
 import com.app.shopin.modules.security.dto.OAuth2TempInfo;
 import com.app.shopin.modules.security.entity.PrincipalUser;
-import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.entity.SocialLink;
-import com.app.shopin.modules.security.enums.RolName;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.SocialLinkRepository;
 import com.app.shopin.modules.user.repository.UserRepository;
@@ -19,7 +17,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,13 +33,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Autowired
     private HttpServletRequest request;
-
-    @Autowired
-    private RolService rolService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private StorageService storageService;
+    ;
 
     @Override
     @Transactional
@@ -82,7 +73,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
             Long currentUserId = principal.getUser().getUserId();
             User currentUser = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new IllegalStateException("..."));
+                    .orElseThrow(() -> new IllegalStateException("Usuario logueado no encontrado."));
 
             if (socialLinkRepository.findByProviderAndProviderUserId(provider, providerUserId).isPresent()) {
                 throw new CustomOAuth2AuthenticationException("Esta cuenta de " + provider + " ya está vinculada a otro usuario.");
@@ -92,6 +83,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             newSocialLink.setProvider(provider);
             newSocialLink.setProviderUserId(providerUserId);
             socialLinkRepository.save(newSocialLink);
+
+            request.getSession().setAttribute("OAUTH2_FLOW_TYPE", "LINKING");
+
             return currentUser;
         }
 
