@@ -192,4 +192,15 @@ public class UserController {
         return ResponseEntity.ok(userService.setPreferredTwoFactorMethod(userId, dto.method()));
     }
 
+    // UN-LINK ACCOUNT
+    @DeleteMapping("/{userId}/social-links/{provider}")
+    public ResponseEntity<UserResponse> unlinkSocialAccount(
+            @PathVariable Long userId,
+            @PathVariable String provider,
+            @RequestBody @Valid PasswordConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        UserResponse response = userService.unlinkSocialAccount(userId, provider, dto, currentUser);
+        return ResponseEntity.ok(response);
+    }
 }
