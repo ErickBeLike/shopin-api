@@ -4,12 +4,12 @@ import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
 import com.app.shopin.services.email.EmailService;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 

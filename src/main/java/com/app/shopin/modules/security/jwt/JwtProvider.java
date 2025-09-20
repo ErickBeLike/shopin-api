@@ -1,7 +1,7 @@
 package com.app.shopin.modules.security.jwt;
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.OAuth2TempInfo;
+import com.app.shopin.modules.security.dto.oauth2.OAuth2TempInfo;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -56,7 +56,7 @@ public class JwtProvider {
         PrincipalUser principalUser = (PrincipalUser) authentication.getPrincipal();
 
         List<String> roles = principalUser.getAuthorities().stream()
-                .map(a -> a.getAuthority())
+                .map(GrantedAuthority::getAuthority)
                 .toList();
 
         Map<String, Object> claims = new HashMap<>();

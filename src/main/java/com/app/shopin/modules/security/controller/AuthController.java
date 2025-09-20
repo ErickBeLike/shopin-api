@@ -2,14 +2,15 @@ package com.app.shopin.modules.security.controller;
 
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.*;
+import com.app.shopin.modules.security.dto.auth.*;
+import com.app.shopin.modules.security.dto.oauth2.CompleteRegistrationDTO;
+import com.app.shopin.modules.security.dto.twofactor.LoginTwoFactorRequestDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import com.app.shopin.modules.security.service.AuthService;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.util.UserResponse;
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

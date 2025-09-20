@@ -1,8 +1,9 @@
 package com.app.shopin.modules.user.controller;
 
-import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.*;
-import com.app.shopin.modules.security.entity.PrincipalUser;
+import com.app.shopin.modules.security.dto.twofactor.CodeConfirmationDTO;
+import com.app.shopin.modules.security.dto.twofactor.PasswordConfirmationDTO;
+import com.app.shopin.modules.security.dto.twofactor.SetPreferredTwoFactorDTO;
+import com.app.shopin.modules.security.dto.twofactor.SetupTwoFactorDTO;
 import com.app.shopin.modules.user.dto.*;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
@@ -149,7 +150,7 @@ public class UserController {
     @PostMapping("/{userId}/2fa/app/enable")
     public ResponseEntity<UserResponse> enableApp2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid CodeConfirmationDTO  dto) {
+            @RequestBody @Valid CodeConfirmationDTO dto) {
         UserResponse response = userService.enableAppTwoFactor(userId, dto);
         return ResponseEntity.ok(response);
     }
