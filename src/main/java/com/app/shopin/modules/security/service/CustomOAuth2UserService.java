@@ -7,13 +7,11 @@ import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.SocialLinkRepository;
 import com.app.shopin.modules.user.repository.UserRepository;
-import com.app.shopin.services.cloudinary.StorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -33,7 +31,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Autowired
     private HttpServletRequest request;
-    ;
 
     @Override
     @Transactional
