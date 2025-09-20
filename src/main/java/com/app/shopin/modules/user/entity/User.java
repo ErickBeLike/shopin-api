@@ -39,6 +39,9 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false)
+    private boolean hasSetLocalPassword = false;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<SocialLink> socialLinks = new HashSet<>();
 
@@ -163,6 +166,14 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public boolean isHasSetLocalPassword() {
+        return hasSetLocalPassword;
+    }
+
+    public void setHasSetLocalPassword(boolean hasSetLocalPassword) {
+        this.hasSetLocalPassword = hasSetLocalPassword;
     }
 
     public Set<SocialLink> getSocialLinks() {
