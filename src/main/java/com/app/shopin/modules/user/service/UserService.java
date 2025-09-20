@@ -470,6 +470,32 @@ public class UserService {
         return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
     }
 
+    public UserResponse setPasswordForOAuthUser(Long userId, String newPassword) {
+        User user = findUserById(userId);
+
+        // 1. Verificamos que el usuario NO tenga ya una contraseña establecida.
+        // Este método es solo para la primera vez.
+        if (user.isHasSetLocalPassword()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Este usuario ya tiene una contraseña. Use la función 'Cambiar Contraseña'.");
+        }
+
+        // 2. Validamos y hasheamos la nueva contraseña.
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "La nueva contraseña no puede estar vacía.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        // 3. ¡Cambiamos la bandera!
+        user.setHasSetLocalPassword(true);
+
+        // 4. Invalidamos otras sesiones por seguridad.
+        user.incrementTokenVersion();
+
+        userRepository.save(user);
+
+        return new UserResponse("Contraseña creada exitosamente. Ahora puedes usarla para iniciar sesión y para acciones de seguridad.");
+    }
+
     // 2FA SECTION --------------
     private void verifyUserPassword(User user, String password) {
         if (password == null || !passwordEncoder.matches(password, user.getPassword())) {
