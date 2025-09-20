@@ -79,6 +79,13 @@ public class UserService {
         }
     }
 
+    private void checkOwnership(Long targetUserId, UserDetails currentUser) {
+        PrincipalUser principal = (PrincipalUser) currentUser;
+        if (!targetUserId.equals(principal.getUser().getUserId())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
+        }
+    }
+
     public List<User> getAllTheUsers() {
         return userRepository.findAll();
     }
@@ -142,6 +149,7 @@ public class UserService {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setHasSetLocalPassword(true);
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
         user.setHasSetLocalPassword(true);
@@ -469,6 +477,33 @@ public class UserService {
         return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
     }
 
+    public UserResponse setPasswordForOAuthUser(Long userId, String newPassword, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+        User user = findUserById(userId);
+
+        // 1. Verificamos que el usuario NO tenga ya una contraseña establecida.
+        // Este método es solo para la primera vez.
+        if (user.isHasSetLocalPassword()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Este usuario ya tiene una contraseña. Use la función 'Cambiar Contraseña'.");
+        }
+
+        // 2. Validamos y hasheamos la nueva contraseña.
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "La nueva contraseña no puede estar vacía.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        // 3. ¡Cambiamos la bandera!
+        user.setHasSetLocalPassword(true);
+
+        // 4. Invalidamos otras sesiones por seguridad.
+        user.incrementTokenVersion();
+
+        userRepository.save(user);
+
+        return new UserResponse("Contraseña creada exitosamente. Ahora puedes usarla para iniciar sesión y para acciones de seguridad.");
+    }
+
     // 2FA SECTION --------------
     private void verifyUserPassword(User user, String password) {
         if (password == null || !passwordEncoder.matches(password, user.getPassword())) {
@@ -624,7 +659,7 @@ public class UserService {
 
         User user = findUserById(userId);
 
-        // 2. Le informamos al usuarios que para administrar sus vinculaciones es necesario una contraseña otorgada por el
+        // 2. Le informamos al usuario que para administrar sus vinculaciones es necesario una contraseña otorgada por el
         if (!user.isHasSetLocalPassword()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Para gestionar tus vinculaciones, primero debes crear una contraseña para tu cuenta.");
         }
