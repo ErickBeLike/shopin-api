@@ -9,7 +9,6 @@ import com.app.shopin.modules.security.service.AuthService;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.util.UserResponse;
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
