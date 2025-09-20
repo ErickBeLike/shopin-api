@@ -18,7 +18,6 @@ import com.app.shopin.modules.security.blacklist.TokenBlacklist;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.security.jwt.JwtProvider;
 import com.app.shopin.modules.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.ParseException;
 import java.time.LocalDateTime;
@@ -34,7 +34,6 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
-@Transactional
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
@@ -69,6 +68,7 @@ public class AuthService {
     public record TokenPair(String accessToken, String refreshToken) {}
     private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
 
+    @Transactional
     public UserResponse requestPasswordReset(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No existe un usuario con ese correo electrónico."));
@@ -89,6 +89,7 @@ public class AuthService {
         return new UserResponse("Se ha enviado un código de restablecimiento a tu correo.");
     }
 
+    @Transactional
     public ValidationResponseDTO validateResetCode(String code) {
         // 1. Buscar al usuario por el código
         User user = userRepository.findByPasswordResetCode(code)
@@ -108,6 +109,7 @@ public class AuthService {
         return new ValidationResponseDTO(validationToken, "Código validado correctamente.");
     }
 
+    @Transactional
     public UserResponse setNewPassword(String validationToken, String newPassword) {
         // 1. Validar el token temporal
         if (!jwtProvider.validateToken(validationToken)) {
@@ -139,6 +141,7 @@ public class AuthService {
         return new UserResponse("Tu contraseña ha sido actualizada correctamente. Por favor, inicia sesión de nuevo.");
     }
 
+    @Transactional(readOnly = true)
     public User authenticateAndGetUser(LoginDTO loginDTO) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword()));
@@ -147,6 +150,7 @@ public class AuthService {
         return principal.getUser();
     }
 
+    @Transactional
     public TokenPair generateTokensForUser(User user) {
         // Creamos el PrincipalUser y la Autenticación para el contexto de Spring Security
         PrincipalUser principalUser = PrincipalUser.build(user);
@@ -165,6 +169,7 @@ public class AuthService {
     }
 
     // 2FA EMAIL SECTION
+    @Transactional
     public void sendTwoFactorCodeIfApplicable(User user) {
         if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.EMAIL && user.isTwoFactorEmailEnabled()) {
             String code = generateRandomCode();
@@ -176,6 +181,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public TokenPair verifyEmailCodeAndLogin(LoginTwoFactorRequestDTO dto) {
         String email = dto.email();
         User user = userRepository.findByEmail(email)
@@ -195,6 +201,7 @@ public class AuthService {
     }
 
     // 2FA APP SECTION
+    @Transactional
     public TokenPair verifyAppCodeAndLogin(LoginTwoFactorRequestDTO dto) {
         String email = dto.email();
         User user = userRepository.findByEmail(email)
@@ -206,6 +213,7 @@ public class AuthService {
         return generateTokensForUser(user);
     }
 
+    @Transactional
     public TokenPair createOAuth2UserAndGetTokens(String registrationToken, String username) {
         // 1. Validamos el token y extraemos la información del usuario
         OAuth2TempInfo tempInfo = jwtProvider.getRegistrationInfoFromToken(registrationToken);

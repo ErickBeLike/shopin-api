@@ -85,10 +85,12 @@ public class UserService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<User> getAllTheUsers() {
         return userRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró un usuario para el ID: " + id));
