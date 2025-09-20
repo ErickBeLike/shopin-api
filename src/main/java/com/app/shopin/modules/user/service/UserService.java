@@ -142,6 +142,7 @@ public class UserService {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setHasSetLocalPassword(true);
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
         user.setHasSetLocalPassword(true);
