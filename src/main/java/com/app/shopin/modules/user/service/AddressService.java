@@ -7,19 +7,18 @@ import com.app.shopin.modules.user.entity.Address;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.AddressRepository;
 import com.app.shopin.modules.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class AddressService {
 
     @Autowired
@@ -44,6 +43,7 @@ public class AddressService {
         }
     }
 
+    @Transactional
     public AddressDTO addAddressToUser(Long userId, AddressDTO addressDTO) {
         // 1. Buscamos al usuario para asociarle la dirección
         User user = userRepository.findById(userId)
@@ -68,11 +68,13 @@ public class AddressService {
         return mapToDTO(savedAddress);
     }
 
+    @Transactional(readOnly = true)
     public Page<AddressDTO> getAllAddresses(Pageable pageable) {
         Page<Address> addressPage = addressRepository.findAll(pageable);
         return addressPage.map(this::mapToDTO); // .map() es una función de Page para convertir el contenido
     }
 
+    @Transactional(readOnly = true)
     public List<AddressDTO> getAddressesByUserId(Long userId, UserDetails currentUser) {
         // Verificamos que el usuario que pide la lista sea el dueño O un admin
         checkOwnershipOrAdmin(userId, currentUser);
@@ -86,6 +88,7 @@ public class AddressService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public AddressDTO getAddressById(Long addressId, UserDetails currentUser) {
         Address address = findAddressById(addressId);
 
@@ -95,6 +98,7 @@ public class AddressService {
         return mapToDTO(address);
     }
 
+    @Transactional
     public AddressDTO updateAddress(Long addressId, AddressDTO addressDTO) {
         Address address = findAddressById(addressId);
 
@@ -109,6 +113,7 @@ public class AddressService {
         return mapToDTO(updatedAddress);
     }
 
+    @Transactional
     public void deleteAddress(Long addressId) {
         Address address = findAddressById(addressId);
         addressRepository.delete(address);
