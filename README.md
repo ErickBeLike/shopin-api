@@ -1,5 +1,9 @@
 # shopin-api
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ErickBeLike/shopin-api/main/assets/ShopIn-recorted.png" alt="ShopIn API Logo" width="250"/>
+</p>
+
 ## E-commerce Project (API-First)
 
 This is the API project for an e-commerce platform, built with an **API-First** approach using **Spring Boot**. The goal is to create a robust and scalable API that will serve as the backbone for a complete online store application, demonstrating skills in back-end development, business logic, and security.
