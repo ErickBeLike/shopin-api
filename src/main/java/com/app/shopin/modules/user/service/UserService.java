@@ -22,13 +22,13 @@ import com.app.shopin.modules.user.repository.UserRepository;
 import com.app.shopin.services.cloudinary.StorageService;
 import com.app.shopin.services.email.EmailService;
 import com.app.shopin.util.UserResponse;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
@@ -37,7 +37,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@Transactional
 public class UserService {
 
     @Autowired
@@ -132,6 +131,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public UserResponse save(NewUserDTO dto,
                              MultipartFile profileImage) {
         // 1) Validaciones de existencia
@@ -210,6 +210,7 @@ public class UserService {
         return new UserResponse("Usuario " + user.getFullTag() + " ha sido creado");
     }
 
+    @Transactional
     public UserResponse updateUser(Long id,
                                    NewUserDTO dto,
                                    MultipartFile profileImage) {
@@ -306,6 +307,7 @@ public class UserService {
                         " ha sido actualizado correctamente. Por seguridad, su sesión actual se invalidará; por favor, inicie sesión de nuevo.");
     }
 
+    @Transactional
     public Map<String, Boolean> softDeleteUser(Long id, UserDetails currentUser) {
         // 1. Verifica los permisos antes de continuar
         checkOwnershipOrAdmin(id, currentUser);
@@ -342,6 +344,7 @@ public class UserService {
     }
 
     //  METHOD FOT UPDATE USER DATA
+    @Transactional
     public UserResponse updateUserProfile(Long id, UpdateUserDataDTO dto) {
         // 1. Buscar al usuario
         User user = findUserById(id);
@@ -360,6 +363,7 @@ public class UserService {
         return new UserResponse("El perfil de " + user.getUsername() + " ha sido actualizado.");
     }
 
+    @Transactional
     public UserResponse updateProfileImage(Long id, MultipartFile profileImage) {
         if (profileImage == null || profileImage.isEmpty()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "No se ha proporcionado una imagen.");
@@ -387,6 +391,7 @@ public class UserService {
         return new UserResponse("Imagen de perfil de " + user.getUsername() + " actualizada.");
     }
 
+    @Transactional
     public UserResponse deleteProfileImage(Long id) {
         User user = findUserById(id);
 
@@ -405,6 +410,7 @@ public class UserService {
     }
 
     // METHOD FOR UPDATE USER USERNAME
+    @Transactional
     public UserResponse updateUsername(Long id, UpdateUsernameDTO dto) {
         User user = findUserById(id);
         String newUsername = dto.userName().trim();
@@ -424,6 +430,7 @@ public class UserService {
     }
 
     // METHOD FOR UPDATE USER EMAIL
+    @Transactional
     public UserResponse updateEmail(Long id, UpdateEmailDTO dto) {
         // 1. Buscar al usuario
         User user = findUserById(id);
@@ -444,13 +451,13 @@ public class UserService {
 
         // 5. Invalidar sesión por seguridad
         user.incrementTokenVersion();
-
         // 6. Guardar
         userRepository.save(user);
 
-        return new UserResponse("Correo electrónico actualizado. Por seguridad, por favor inicie sesión de nuevo.");
+        return new UserResponse("Correo electrónico actualizado, por seguridad favor de volver a autenticarse.");
     }
 
+    @Transactional
     public UserResponse changePassword(Long userId, String oldPassword, String newPassword, UserDetails currentUser) {
         checkOwnershipOrAdmin(userId, currentUser);
 
@@ -471,12 +478,12 @@ public class UserService {
 
         // 4. Invalidar todas las sesiones anteriores
         user.incrementTokenVersion();
-
         userRepository.save(user);
 
-        return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
+        return new UserResponse("Contraseña actualizada correctamente, por seguridad favor de volver a autenticarse.");
     }
 
+    @Transactional
     public UserResponse setPasswordForOAuthUser(Long userId, String newPassword, UserDetails currentUser) {
         checkOwnership(userId, currentUser);
         User user = findUserById(userId);
@@ -498,10 +505,9 @@ public class UserService {
 
         // 4. Invalidamos otras sesiones por seguridad.
         user.incrementTokenVersion();
-
         userRepository.save(user);
 
-        return new UserResponse("Contraseña creada exitosamente. Ahora puedes usarla para iniciar sesión y para acciones de seguridad.");
+        return new UserResponse("Contraseña creada exitosamente. Ahora puedes usarla para iniciar sesión y para acciones de seguridad, por seguridad favor de volver a autenticarse.");
     }
 
     // 2FA SECTION --------------
@@ -516,6 +522,7 @@ public class UserService {
     }
 
     // 2FA APP SECTION
+    @Transactional
     public SetupTwoFactorDTO setupAppTwoFactor(Long userId, PasswordConfirmationDTO dto) {
         User user = findUserById(userId);
         // 1. PRIMERO, verificar la identidad del usuario con su contraseña
@@ -532,6 +539,7 @@ public class UserService {
         return new SetupTwoFactorDTO(secret, qrCodeImageUri);
     }
 
+    @Transactional
     public UserResponse enableAppTwoFactor(Long userId, CodeConfirmationDTO dto) {
         User user = findUserById(userId);
         // Para este paso, ya no es necesaria la contraseña, porque ya la pidió el 'setup'.
@@ -547,8 +555,11 @@ public class UserService {
         if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.NONE) {
             user.setPreferredTwoFactorMethod(TwoFactorMethod.APP);
         }
+
+        user.incrementTokenVersion();
         userRepository.save(user);
-        return new UserResponse("La autenticación de dos factores con la aplicación ha sido habilitada exitosamente.");
+
+        return new UserResponse("La autenticación de dos factores con la aplicación ha sido habilitada exitosamente, por seguridad favor de volver a autenticarse.");
     }
 
     public UserResponse preDisableAppTwoFactor(Long userId, PasswordConfirmationDTO dto) {
@@ -557,6 +568,7 @@ public class UserService {
         return new UserResponse("Contraseña verificada. Por favor, ingrese su código de la aplicación para confirmar la desactivación.");
     }
 
+    @Transactional
     public UserResponse confirmDisableAppTwoFactor(Long userId, CodeConfirmationDTO dto) { // <- DTO Actualizado
         User user = findUserById(userId);
         if (dto.code() == null || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), dto.code())) {
@@ -568,11 +580,15 @@ public class UserService {
         if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.APP) {
             user.setPreferredTwoFactorMethod(user.isTwoFactorEmailEnabled() ? TwoFactorMethod.EMAIL : TwoFactorMethod.NONE);
         }
+
+        user.incrementTokenVersion();
         userRepository.save(user);
-        return new UserResponse("La autenticación de dos factores con la aplicación ha sido deshabilitada.");
+
+        return new UserResponse("La autenticación de dos factores con la aplicación ha sido deshabilitada, por seguridad favor de volver a autenticarse.");
     }
 
     // 2FA EMAIL SECTION
+    @Transactional
     public UserResponse setupEmailTwoFactor(Long userId, PasswordConfirmationDTO dto) {
         User user = findUserById(userId);
         verifyUserPassword(user, dto.password());
@@ -586,6 +602,7 @@ public class UserService {
         return new UserResponse("Contraseña verificada. Hemos enviado un código a tu correo para activar el servicio.");
     }
 
+    @Transactional
     public UserResponse enableEmailTwoFactor(Long userId, CodeConfirmationDTO  dto) {
         User user = findUserById(userId);
         if (dto.code() == null ||
@@ -603,11 +620,14 @@ public class UserService {
         if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.NONE) {
             user.setPreferredTwoFactorMethod(TwoFactorMethod.EMAIL);
         }
+
+        user.incrementTokenVersion();
         userRepository.save(user);
 
-        return new UserResponse("La autenticación de dos factores por correo ha sido habilitada exitosamente.");
+        return new UserResponse("La autenticación de dos factores por correo ha sido habilitada exitosamente, por seguridad favor de volver a autenticarse.");
     }
 
+    @Transactional
     public UserResponse preDisableEmailTwoFactor(Long userId, PasswordConfirmationDTO dto) {
         User user = findUserById(userId);
         verifyUserPassword(user, dto.password());
@@ -621,6 +641,7 @@ public class UserService {
         return new UserResponse("Contraseña verificada. Hemos enviado un código a tu correo para confirmar la desactivación.");
     }
 
+    @Transactional
     public UserResponse confirmDisableEmailTwoFactor(Long userId, CodeConfirmationDTO dto) { // <- DTO Actualizado
         User user = findUserById(userId);
         if (dto.code() == null ||
@@ -635,11 +656,15 @@ public class UserService {
         if (user.getPreferredTwoFactorMethod() == TwoFactorMethod.EMAIL) {
             user.setPreferredTwoFactorMethod(user.isTwoFactorAppEnabled() ? TwoFactorMethod.APP : TwoFactorMethod.NONE);
         }
+
+        user.incrementTokenVersion();
         userRepository.save(user);
-        return new UserResponse("La autenticación de dos factores por correo ha sido deshabilitada.");
+
+        return new UserResponse("La autenticación de dos factores por correo ha sido deshabilitada, por seguridad favor de volver a autenticarse.");
     }
 
     // 2FA PREFERRED METHOD SECTION
+    @Transactional
     public UserResponse setPreferredTwoFactorMethod(Long userId, TwoFactorMethod method) {
         User user = findUserById(userId);
         if (method != TwoFactorMethod.NONE &&
@@ -653,6 +678,7 @@ public class UserService {
     }
 
     // UN-LINk ACCOUNT
+    @Transactional
     public UserResponse unlinkSocialAccount(Long userId, String provider, PasswordConfirmationDTO dto, UserDetails currentUser) {
         // 1. Verificamos que el usuario tenga permiso para esta acción.
         checkOwnershipOrAdmin(userId, currentUser);
@@ -675,9 +701,11 @@ public class UserService {
 
         // Eliminamos el link de la colección y dejamos que JPA se encargue del borrado
         user.getSocialLinks().remove(linkToRemove);
+
+        user.incrementTokenVersion();
         userRepository.save(user); // Guardamos el usuario para que la relación se actualice
 
-        return new UserResponse("La cuenta de " + provider + " ha sido desvinculada exitosamente.");
+        return new UserResponse("La cuenta de " + provider + " ha sido desvinculada exitosamente, por seguridad favor de volver a autenticarse.");
     }
 
 }
