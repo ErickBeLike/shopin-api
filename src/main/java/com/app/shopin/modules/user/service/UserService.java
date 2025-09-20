@@ -79,6 +79,13 @@ public class UserService {
         }
     }
 
+    private void checkOwnership(Long targetUserId, UserDetails currentUser) {
+        PrincipalUser principal = (PrincipalUser) currentUser;
+        if (!targetUserId.equals(principal.getUser().getUserId())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
+        }
+    }
+
     public List<User> getAllTheUsers() {
         return userRepository.findAll();
     }
@@ -470,7 +477,8 @@ public class UserService {
         return new UserResponse("Contraseña actualizada correctamente. Las demás sesiones han sido cerradas.");
     }
 
-    public UserResponse setPasswordForOAuthUser(Long userId, String newPassword) {
+    public UserResponse setPasswordForOAuthUser(Long userId, String newPassword, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
         User user = findUserById(userId);
 
         // 1. Verificamos que el usuario NO tenga ya una contraseña establecida.
@@ -651,7 +659,7 @@ public class UserService {
 
         User user = findUserById(userId);
 
-        // 2. Le informamos al usuarios que para administrar sus vinculaciones es necesario una contraseña otorgada por el
+        // 2. Le informamos al usuario que para administrar sus vinculaciones es necesario una contraseña otorgada por el
         if (!user.isHasSetLocalPassword()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Para gestionar tus vinculaciones, primero debes crear una contraseña para tu cuenta.");
         }

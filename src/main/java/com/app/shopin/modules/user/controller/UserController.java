@@ -1,6 +1,8 @@
 package com.app.shopin.modules.user.controller;
 
+import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.dto.*;
+import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.user.dto.*;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.service.UserService;
@@ -121,6 +123,17 @@ public class UserController {
                 changePasswordDTO.newPassword(),
                 currentUser
         );
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{userId}/set-password")
+    public ResponseEntity<UserResponse> setPasswordForOAuthUser(
+            @PathVariable Long userId,
+            @Valid @RequestBody SetPasswordDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        // El controlador ya no verifica, solo delega la tarea completa al servicio.
+        UserResponse response = userService.setPasswordForOAuthUser(userId, dto.newPassword(), currentUser);
         return ResponseEntity.ok(response);
     }
 
