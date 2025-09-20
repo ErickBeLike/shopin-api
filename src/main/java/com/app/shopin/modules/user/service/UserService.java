@@ -624,18 +624,13 @@ public class UserService {
 
         User user = findUserById(userId);
 
-        // 2. Verificamos la contraseña del usuario para confirmar la acción.
-        verifyUserPassword(user, dto.password());
-
-        // 3. REGLA DE NEGOCIO CRÍTICA: Evitar que el usuario se quede sin acceso.
-        // Contamos cuántos métodos de login le quedan.
-        boolean hasPassword = user.isHasSetLocalPassword(); // Asumiendo que implementamos la bandera
-        long socialLinkCount = user.getSocialLinks().size();
-
-        // Si solo le queda este link social y no tiene contraseña, no puede borrarlo.
-        if (socialLinkCount <= 1 && !hasPassword) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "No puedes eliminar tu único método de inicio de sesión. Por favor, crea una contraseña primero.");
+        // 2. Le informamos al usuarios que para administrar sus vinculaciones es necesario una contraseña otorgada por el
+        if (!user.isHasSetLocalPassword()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Para gestionar tus vinculaciones, primero debes crear una contraseña para tu cuenta.");
         }
+
+        // 3. Verificamos la contraseña del usuario para confirmar la acción.
+        verifyUserPassword(user, dto.password());
 
         // 4. Buscamos y eliminamos la vinculación.
         SocialLink linkToRemove = user.getSocialLinks().stream()
