@@ -2,7 +2,9 @@ package com.app.shopin.modules.security.controller;
 
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.*;
+import com.app.shopin.modules.security.dto.auth.*;
+import com.app.shopin.modules.security.dto.oauth2.CompleteRegistrationDTO;
+import com.app.shopin.modules.security.dto.twofactor.LoginTwoFactorRequestDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import com.app.shopin.modules.security.service.AuthService;

@@ -2,9 +2,9 @@ package com.app.shopin.modules.user.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
-import com.app.shopin.modules.security.dto.CodeConfirmationDTO;
-import com.app.shopin.modules.security.dto.PasswordConfirmationDTO;
-import com.app.shopin.modules.security.dto.SetupTwoFactorDTO;
+import com.app.shopin.modules.security.dto.twofactor.CodeConfirmationDTO;
+import com.app.shopin.modules.security.dto.twofactor.PasswordConfirmationDTO;
+import com.app.shopin.modules.security.dto.twofactor.SetupTwoFactorDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;

@@ -1,7 +1,7 @@
 package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.exception.CustomOAuth2AuthenticationException;
-import com.app.shopin.modules.security.dto.OAuth2TempInfo;
+import com.app.shopin.modules.security.dto.oauth2.OAuth2TempInfo;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.user.entity.User;

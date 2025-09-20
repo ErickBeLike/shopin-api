@@ -1,7 +1,11 @@
 package com.app.shopin.modules.security.service;
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.security.dto.*;
+import com.app.shopin.modules.security.dto.auth.JwtDTO;
+import com.app.shopin.modules.security.dto.auth.LoginDTO;
+import com.app.shopin.modules.security.dto.auth.ValidationResponseDTO;
+import com.app.shopin.modules.security.dto.oauth2.OAuth2TempInfo;
+import com.app.shopin.modules.security.dto.twofactor.LoginTwoFactorRequestDTO;
 import com.app.shopin.modules.security.entity.PrincipalUser;
 import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.entity.SocialLink;

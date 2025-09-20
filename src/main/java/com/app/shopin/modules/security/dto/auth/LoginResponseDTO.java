@@ -1,4 +1,4 @@
-package com.app.shopin.modules.security.dto;
+package com.app.shopin.modules.security.dto.auth;
 
 import java.util.List;
 
