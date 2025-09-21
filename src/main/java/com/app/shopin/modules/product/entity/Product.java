@@ -5,6 +5,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,9 @@ public class Product {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+    @Column
+    private Integer discountPercent;
 
     @Column(nullable = false)
     private Integer stockQuantity;
@@ -106,6 +110,14 @@ public class Product {
         this.price = price;
     }
 
+    public Integer getDiscountPercent() {
+        return discountPercent;
+    }
+
+    public void setDiscountPercent(Integer discountPercent) {
+        this.discountPercent = discountPercent;
+    }
+
     public Integer getStockQuantity() {
         return stockQuantity;
     }
@@ -144,5 +156,19 @@ public class Product {
 
     public void setDeletedAt(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    @Transient
+    public BigDecimal getEffectivePrice() {
+        // Si no hay un porcentaje de descuento o es cero, devuelve el precio normal.
+        if (this.discountPercent == null || this.discountPercent <= 0) {
+            return this.price;
+        }
+
+        // Si hay descuento, calcúlalo.
+        BigDecimal discountMultiplier = BigDecimal.valueOf(100 - this.discountPercent)
+                .divide(BigDecimal.valueOf(100));
+
+        return this.price.multiply(discountMultiplier).setScale(2, RoundingMode.HALF_UP);
     }
 }

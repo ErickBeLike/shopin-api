@@ -6,6 +6,8 @@ import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
 import com.app.shopin.modules.product.repository.CategoryRepository;
 import com.app.shopin.modules.product.repository.ProductRepository;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,8 @@ public class ProductService {
     private ProductRepository productRepository;
     @Autowired
     private CategoryRepository categoryRepository;
+
+    public record UpdateDiscountDTO(@Min(0) @Max(100) Integer discountPercent) {}
 
     @Transactional
     public ProductDTO createProduct(ProductDTO productDTO) {
@@ -51,6 +55,29 @@ public class ProductService {
         mapDtoToEntity(productDTO, product, category);
         Product updatedProduct = productRepository.save(product);
         return mapEntityToDto(updatedProduct);
+    }
+
+    @Transactional
+    public ProductDTO updateProductDiscount(Long productId, UpdateDiscountDTO discountDTO) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        product.setDiscountPercent(discountDTO.discountPercent());
+
+        productRepository.save(product);
+        return mapEntityToDto(product);
+    }
+
+    @Transactional
+    public ProductDTO removeProductDiscount(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        // Simplemente ponemos el porcentaje en null (o 0).
+        product.setDiscountPercent(null);
+
+        productRepository.save(product);
+        return mapEntityToDto(product);
     }
 
     @Transactional
@@ -123,6 +150,22 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductDTO> getProductsOnSale() {
+        // Ahora busca por productos que tengan un descuento mayor a 0.
+        return productRepository.findByDiscountPercentGreaterThan(0).stream()
+                .map(this::mapEntityToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductDTO> getProductsByMinimumDiscount(Integer minDiscount) {
+        // Busca productos con un descuento igual o mayor al que pide el usuario.
+        return productRepository.findByDiscountPercentGreaterThanEqual(minDiscount).stream()
+                .map(this::mapEntityToDto)
+                .collect(Collectors.toList());
+    }
+
     private ProductDTO mapEntityToDto(Product product) {
         return new ProductDTO(
                 product.getId(),
@@ -130,6 +173,8 @@ public class ProductService {
                 product.getName(),
                 product.getDescription(),
                 product.getPrice(),
+                product.getDiscountPercent(),
+                product.getEffectivePrice(),
                 product.getStockQuantity(),
                 product.getCategory().getId()
         );
@@ -140,6 +185,7 @@ public class ProductService {
         entity.setName(dto.name());
         entity.setDescription(dto.description());
         entity.setPrice(dto.price());
+        entity.setDiscountPercent(dto.discountPercent());
         entity.setStockQuantity(dto.stockQuantity());
         entity.setCategory(category);
     }

@@ -1,11 +1,9 @@
 package com.app.shopin.modules.product.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public record ProductDTO(
         Long id,
@@ -15,12 +13,17 @@ public record ProductDTO(
 
         @NotBlank(message = "El nombre del producto es obligatorio")
         String name,
-
         String description,
 
         @NotNull(message = "El precio es obligatorio")
         @Positive(message = "El precio debe ser mayor que cero")
         BigDecimal price,
+        @Min(value = 0, message = "El descuento no puede ser negativo")
+        @Max(value = 100, message = "El descuento no puede ser mayor a 100")
+        Integer discountPercent,
+
+        BigDecimal effectivePrice,
+
 
         @NotNull(message = "La cantidad en stock es obligatoria")
         @PositiveOrZero(message = "El stock no puede ser negativo")

@@ -32,4 +32,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p WHERE p.category.id IN (SELECT c.id FROM Category c WHERE c.id = :categoryId OR c.parent.id = :categoryId)")
     List<Product> findByCategoryIdWithSubcategories(@Param("categoryId") Long categoryId);
+
+    List<Product> findByDiscountPercentGreaterThan(Integer percent);
+
+    List<Product> findByDiscountPercentGreaterThanEqual(Integer percent);
 }
