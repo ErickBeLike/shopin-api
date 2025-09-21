@@ -192,7 +192,7 @@ public class UserService {
         if (profileImage != null && !profileImage.isEmpty()) {
             try {
                 // Intenta subir la imagen proporcionada
-                Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+                Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages");
                 user.setProfilePictureUrl(fileInfo.get("url"));
                 user.setProfilePicturePublicId(fileInfo.get("publicId"));
             } catch (Exception e) {
@@ -279,10 +279,11 @@ public class UserService {
             try {
                 // Si se sube una nueva imagen, borra la anterior de Cloudinary (si existe)
                 if (user.getProfilePicturePublicId() != null) {
-                    storageService.deleteFile(user.getProfilePicturePublicId(), null);
+                    // ANTES: storageService.deleteFile(user.getProfilePicturePublicId(), null);
+                    // AHORA: Especificamos que es una imagen.
+                    storageService.deleteFile(user.getProfilePicturePublicId(), "image");
                 }
-                // Sube la nueva imagen
-                Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+                Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages");
                 user.setProfilePictureUrl(fileInfo.get("url"));
                 user.setProfilePicturePublicId(fileInfo.get("publicId"));
             } catch (Exception e) {
@@ -374,16 +375,12 @@ public class UserService {
 
         // Si la imagen anterior era de Cloudinary, la borramos
         if (user.getProfilePicturePublicId() != null) {
-            storageService.deleteFile(user.getProfilePicturePublicId(), null);
-        }
-
-        try {
-            // Guardamos la nueva imagen y actualizamos la entidad
-            Map<String, String> fileInfo = storageService.saveFile(profileImage, profileImage.getOriginalFilename(), "profileimages");
+            storageService.deleteFile(user.getProfilePicturePublicId(), "image");
+        } try {
+            Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages");
             user.setProfilePictureUrl(fileInfo.get("url"));
             user.setProfilePicturePublicId(fileInfo.get("publicId"));
         } catch (Exception e) {
-            // Fallback: Si la subida falla, genera y sube un avatar
             Map<String, String> fileInfo = generateAndUploadAvatar(user.getFirstName(), user.getLastName());
             user.setProfilePictureUrl(fileInfo.get("url"));
             user.setProfilePicturePublicId(fileInfo.get("publicId"));
@@ -399,7 +396,7 @@ public class UserService {
 
         // Si hay una imagen en Cloudinary, la borramos
         if (user.getProfilePicturePublicId() != null) {
-            storageService.deleteFile(user.getProfilePicturePublicId(), null);
+            storageService.deleteFile(user.getProfilePicturePublicId(), "image");
         }
 
         // Siempre se restaura a un avatar por defecto subido a Cloudinary
