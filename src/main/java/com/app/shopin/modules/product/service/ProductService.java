@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,7 @@ public class ProductService {
         productRepository.deleteById(productId);
     }
 
+    // SUPER-ADMIN/DEVELOPER SECTION
     @Transactional
     public ProductDTO reactivateProduct(Long productId) {
         Product product = productRepository.findWithDeletedById(productId)
@@ -79,6 +81,7 @@ public class ProductService {
         return productRepository.findAllWithDeleted(pageable).map(this::mapEntityToDto);
     }
 
+    // SEARCHING SECTION
     @Transactional(readOnly = true)
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable).map(this::mapEntityToDto);
@@ -101,6 +104,21 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductDTO> getProductsByCategory(Long categoryId) {
         return productRepository.findByCategoryId(categoryId).stream()
+                .map(this::mapEntityToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductDTO> getProductsBySubcategory(Long categoryId) {
+        // Este método ahora buscará en la categoría principal Y en sus hijas directas.
+        return productRepository.findByCategoryIdWithSubcategories(categoryId).stream()
+                .map(this::mapEntityToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductDTO> getProductsByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+        return productRepository.findByPriceBetween(minPrice, maxPrice).stream()
                 .map(this::mapEntityToDto)
                 .collect(Collectors.toList());
     }
