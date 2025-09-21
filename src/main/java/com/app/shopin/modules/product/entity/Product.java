@@ -1,6 +1,8 @@
 package com.app.shopin.modules.product.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -9,6 +11,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "products")
+@SQLDelete(sql = "UPDATE products SET deleted_at = NOW() WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class Product {
 
     @Id
@@ -39,8 +43,10 @@ public class Product {
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
-
+    @Column
     private LocalDateTime updatedAt;
+    @Column
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -130,5 +136,13 @@ public class Product {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }
