@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -18,6 +20,9 @@ public class Product {
 
     @Column(nullable = false)
     private String name;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductMedia> media = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -69,6 +74,14 @@ public class Product {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public List<ProductMedia> getMedia() {
+        return media;
+    }
+
+    public void setMedia(List<ProductMedia> media) {
+        this.media = media;
     }
 
     public String getDescription() {
