@@ -2,6 +2,8 @@ package com.app.shopin.modules.product.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.product.dto.ProductDTO;
+import com.app.shopin.modules.product.dto.UpdatePriceDTO;
+import com.app.shopin.modules.product.dto.UpdateStockDTO;
 import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
 import com.app.shopin.modules.product.repository.CategoryRepository;
@@ -76,6 +78,26 @@ public class ProductService {
         // Simplemente ponemos el porcentaje en null (o 0).
         product.setDiscountPercent(null);
 
+        productRepository.save(product);
+        return mapEntityToDto(product);
+    }
+
+    @Transactional
+    public ProductDTO updateStock(Long productId, UpdateStockDTO stockDTO) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        product.setStockQuantity(stockDTO.newStock());
+        productRepository.save(product);
+        return mapEntityToDto(product);
+    }
+
+    @Transactional
+    public ProductDTO updatePrice(Long productId, UpdatePriceDTO priceDTO) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        product.setPrice(priceDTO.newPrice());
         productRepository.save(product);
         return mapEntityToDto(product);
     }
