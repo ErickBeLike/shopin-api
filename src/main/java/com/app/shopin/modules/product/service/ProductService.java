@@ -9,6 +9,7 @@ import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
 import com.app.shopin.modules.product.entity.ProductMedia;
 import com.app.shopin.modules.product.repository.CategoryRepository;
+import com.app.shopin.modules.product.repository.ProductMediaRepository;
 import com.app.shopin.modules.product.repository.ProductRepository;
 import com.app.shopin.services.cloudinary.StorageService;
 import jakarta.validation.constraints.Max;
@@ -36,6 +37,8 @@ public class ProductService {
 
     @Autowired
     private StorageService storageService;
+    @Autowired
+    private ProductMediaRepository productMediaRepository;
 
     public record UpdateDiscountDTO(@Min(0) @Max(100) Integer discountPercent) {}
 
@@ -66,7 +69,7 @@ public class ProductService {
 
         mapDtoToEntity(productDTO, product, category);
 
-        if ((images != null && !images.get(0).isEmpty()) || (video != null && !video.isEmpty())) {
+        if ((images != null && !images.getFirst().isEmpty()) || (video != null && !video.isEmpty())) {
             for (ProductMedia media : product.getMedia()) {
                 storageService.deleteFile(media.getPublicId(), media.getMediaType().toLowerCase());
             }
@@ -76,6 +79,47 @@ public class ProductService {
 
         Product updatedProduct = productRepository.save(product);
         return mapEntityToDto(updatedProduct);
+    }
+
+    @Transactional
+    public ProductDTO addMediaToProduct(Long productId, MultipartFile file) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        // La lógica de negocio se queda aquí
+        if (storageService.isVideoFile(file)) {
+            if (product.getMedia().stream().anyMatch(m -> "VIDEO".equals(m.getMediaType()))) {
+                throw new CustomException(HttpStatus.BAD_REQUEST, "Este producto ya tiene un video.");
+            }
+        } else {
+            if (product.getMedia().stream().filter(m -> "IMAGE".equals(m.getMediaType())).count() >= 5) {
+                throw new CustomException(HttpStatus.BAD_REQUEST, "Este producto ya tiene el máximo de 5 imágenes.");
+            }
+        }
+
+        // Llamamos al nuevo helper para hacer el trabajo pesado
+        createAndSaveMedia(product, file);
+
+        return mapEntityToDto(product);
+    }
+
+    @Transactional
+    public void deleteMediaFromProduct(Long productId, Long mediaId) {
+        ProductMedia media = productMediaRepository.findById(mediaId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Archivo multimedia no encontrado."));
+
+        if (!media.getProduct().getId().equals(productId)) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "Este archivo no pertenece al producto especificado.");
+        }
+
+        if ("IMAGE".equals(media.getMediaType())) {
+            if (media.getProduct().getMedia().stream().filter(m -> "IMAGE".equals(m.getMediaType())).count() <= 1) {
+                throw new CustomException(HttpStatus.BAD_REQUEST, "No se puede eliminar la última imagen de un producto.");
+            }
+        }
+
+        storageService.deleteFile(media.getPublicId(), media.getMediaType().toLowerCase());
+        productMediaRepository.delete(media);
     }
 
     @Transactional
@@ -177,7 +221,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductDTO> getProductsBySubcategory(Long categoryId) {
+    public List<ProductDTO> getProductsByCategoryAndSubcategories(Long categoryId) {
         // Este método ahora buscará en la categoría principal Y en sus hijas directas.
         return productRepository.findByCategoryIdWithSubcategories(categoryId).stream()
                 .map(this::mapEntityToDto)
@@ -210,36 +254,44 @@ public class ProductService {
     // MEDIA FILES UPLOAD METHOD
     private void processMediaFiles(Product product, List<MultipartFile> images, MultipartFile video) {
         // Validar reglas de negocio
-        if (images == null || images.isEmpty() || images.get(0).isEmpty()) {
+        if (images == null || images.isEmpty() || images.getFirst().isEmpty()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Se requiere al menos una imagen para el producto.");
         }
         if (images.size() > 5) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "No se pueden subir más de 5 imágenes.");
         }
 
-        // Subir las imágenes
         for (MultipartFile imageFile : images) {
             if (imageFile != null && !imageFile.isEmpty()) {
-                Map<String, String> imageData = storageService.uploadImage(imageFile, "products");
-                ProductMedia media = new ProductMedia();
-                media.setProduct(product);
-                media.setMediaType("IMAGE");
-                media.setUrl(imageData.get("url"));
-                media.setPublicId(imageData.get("publicId"));
-                product.getMedia().add(media);
+                createAndSaveMedia(product, imageFile);
             }
         }
 
-        // Subir el video si existe
         if (video != null && !video.isEmpty()) {
-            Map<String, String> videoData = storageService.uploadVideo(video, "products");
-            ProductMedia media = new ProductMedia();
-            media.setProduct(product);
-            media.setMediaType("VIDEO");
-            media.setUrl(videoData.get("url"));
-            media.setPublicId(videoData.get("publicId"));
-            product.getMedia().add(media);
+            createAndSaveMedia(product, video);
         }
+    }
+
+    private void createAndSaveMedia(Product product, MultipartFile file) {
+        boolean isVideo = storageService.isVideoFile(file);
+        Map<String, String> fileData;
+        String mediaType;
+
+        if (isVideo) {
+            fileData = storageService.uploadVideo(file, "products");
+            mediaType = "VIDEO";
+        } else {
+            fileData = storageService.uploadImage(file, "products");
+            mediaType = "IMAGE";
+        }
+
+        ProductMedia media = new ProductMedia();
+        media.setProduct(product);
+        media.setMediaType(mediaType);
+        media.setUrl(fileData.get("url"));
+        media.setPublicId(fileData.get("publicId"));
+
+        product.getMedia().add(media);
     }
 
     private ProductDTO mapEntityToDto(Product product) {
