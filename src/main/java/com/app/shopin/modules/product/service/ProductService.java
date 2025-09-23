@@ -2,12 +2,15 @@ package com.app.shopin.modules.product.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.product.dto.ProductDTO;
+import com.app.shopin.modules.product.dto.ProductMediaDTO;
 import com.app.shopin.modules.product.dto.UpdatePriceDTO;
 import com.app.shopin.modules.product.dto.UpdateStockDTO;
 import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
+import com.app.shopin.modules.product.entity.ProductMedia;
 import com.app.shopin.modules.product.repository.CategoryRepository;
 import com.app.shopin.modules.product.repository.ProductRepository;
+import com.app.shopin.services.cloudinary.StorageService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +19,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,10 +34,13 @@ public class ProductService {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private StorageService storageService;
+
     public record UpdateDiscountDTO(@Min(0) @Max(100) Integer discountPercent) {}
 
     @Transactional
-    public ProductDTO createProduct(ProductDTO productDTO) {
+    public ProductDTO createProduct(ProductDTO productDTO, List<MultipartFile> images, MultipartFile video) {
         if (productRepository.existsBySku(productDTO.sku())) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "El SKU ya existe.");
         }
@@ -42,12 +50,14 @@ public class ProductService {
         Product product = new Product();
         mapDtoToEntity(productDTO, product, category);
 
+        processMediaFiles(product, images, video);
+
         Product savedProduct = productRepository.save(product);
         return mapEntityToDto(savedProduct);
     }
 
     @Transactional
-    public ProductDTO updateProduct(Long productId, ProductDTO productDTO) {
+    public ProductDTO updateProduct(Long productId, ProductDTO productDTO, List<MultipartFile> images, MultipartFile video) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
@@ -55,6 +65,15 @@ public class ProductService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Categoría no encontrada."));
 
         mapDtoToEntity(productDTO, product, category);
+
+        if ((images != null && !images.get(0).isEmpty()) || (video != null && !video.isEmpty())) {
+            for (ProductMedia media : product.getMedia()) {
+                storageService.deleteFile(media.getPublicId(), media.getMediaType().toLowerCase());
+            }
+            product.getMedia().clear();
+            processMediaFiles(product, images, video);
+        }
+
         Product updatedProduct = productRepository.save(product);
         return mapEntityToDto(updatedProduct);
     }
@@ -188,11 +207,51 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    // MEDIA FILES UPLOAD METHOD
+    private void processMediaFiles(Product product, List<MultipartFile> images, MultipartFile video) {
+        // Validar reglas de negocio
+        if (images == null || images.isEmpty() || images.get(0).isEmpty()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Se requiere al menos una imagen para el producto.");
+        }
+        if (images.size() > 5) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "No se pueden subir más de 5 imágenes.");
+        }
+
+        // Subir las imágenes
+        for (MultipartFile imageFile : images) {
+            if (imageFile != null && !imageFile.isEmpty()) {
+                Map<String, String> imageData = storageService.uploadImage(imageFile, "products");
+                ProductMedia media = new ProductMedia();
+                media.setProduct(product);
+                media.setMediaType("IMAGE");
+                media.setUrl(imageData.get("url"));
+                media.setPublicId(imageData.get("publicId"));
+                product.getMedia().add(media);
+            }
+        }
+
+        // Subir el video si existe
+        if (video != null && !video.isEmpty()) {
+            Map<String, String> videoData = storageService.uploadVideo(video, "products");
+            ProductMedia media = new ProductMedia();
+            media.setProduct(product);
+            media.setMediaType("VIDEO");
+            media.setUrl(videoData.get("url"));
+            media.setPublicId(videoData.get("publicId"));
+            product.getMedia().add(media);
+        }
+    }
+
     private ProductDTO mapEntityToDto(Product product) {
+        List<ProductMediaDTO> mediaDTOs = product.getMedia().stream()
+                .map(media -> new ProductMediaDTO(media.getId(), media.getUrl(), media.getMediaType()))
+                .collect(Collectors.toList());
+
         return new ProductDTO(
                 product.getId(),
                 product.getSku(),
                 product.getName(),
+                mediaDTOs,
                 product.getDescription(),
                 product.getPrice(),
                 product.getDiscountPercent(),

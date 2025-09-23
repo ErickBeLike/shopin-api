@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ProductDTO(
         Long id,
@@ -13,6 +14,7 @@ public record ProductDTO(
 
         @NotBlank(message = "El nombre del producto es obligatorio")
         String name,
+        List<ProductMediaDTO> media,
         String description,
 
         @NotNull(message = "El precio es obligatorio")
