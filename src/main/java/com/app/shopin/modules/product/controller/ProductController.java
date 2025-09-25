@@ -77,7 +77,6 @@ public class ProductController {
     // --- ENDPOINTS DE GESTIÓN (PARA ROLES CON PERMISOS) ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAuthority('CREATE_PRODUCT')")
     public ResponseEntity<ProductDTO> createProduct(
             @RequestPart("product") @Valid ProductDTO productDTO,
             @RequestPart("images") List<MultipartFile> images,
@@ -88,7 +87,6 @@ public class ProductController {
     }
 
     @PutMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<ProductDTO> updateProduct(
             @PathVariable Long productId,
             @RequestPart("product") @Valid ProductDTO productDTO,
@@ -100,31 +98,26 @@ public class ProductController {
     }
 
     @PatchMapping("/{productId}/stock")
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<ProductDTO> updateStock(@PathVariable Long productId, @RequestBody @Valid UpdateStockDTO stockDTO) {
         return ResponseEntity.ok(productService.updateStock(productId, stockDTO));
     }
 
     @PatchMapping("/{productId}/price")
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<ProductDTO> updatePrice(@PathVariable Long productId, @RequestBody @Valid UpdatePriceDTO priceDTO) {
         return ResponseEntity.ok(productService.updatePrice(productId, priceDTO));
     }
 
     @PatchMapping("/{productId}/discount")
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<ProductDTO> updateDiscount(@PathVariable Long productId, @RequestBody @Valid ProductService.UpdateDiscountDTO discountDTO) {
         return ResponseEntity.ok(productService.updateProductDiscount(productId, discountDTO));
     }
 
     @DeleteMapping("/{productId}/discount")
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<ProductDTO> removeDiscount(@PathVariable Long productId) {
         return ResponseEntity.ok(productService.removeProductDiscount(productId));
     }
 
     @DeleteMapping("/{productId}")
-    @PreAuthorize("hasAuthority('DELETE_PRODUCT')")
     public ResponseEntity<Void> softDeleteProduct(@PathVariable Long productId) {
         productService.softDeleteProduct(productId);
         return ResponseEntity.noContent().build();
@@ -133,13 +126,11 @@ public class ProductController {
     // --- ENDPOINTS DE GESTIÓN MULTIMEDIA ---
 
     @PostMapping(value = "/{productId}/media", consumes = "multipart/form-data")
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<ProductDTO> addMedia(@PathVariable Long productId, @RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(productService.addMediaToProduct(productId, file));
     }
 
     @DeleteMapping("/{productId}/media/{mediaId}")
-    @PreAuthorize("hasAuthority('UPDATE_PRODUCT')")
     public ResponseEntity<Void> deleteMedia(@PathVariable Long productId, @PathVariable Long mediaId) {
         productService.deleteMediaFromProduct(productId, mediaId);
         return ResponseEntity.noContent().build();
@@ -148,13 +139,11 @@ public class ProductController {
     // --- ENDPOINTS DE SUPER-ADMIN ---
 
     @GetMapping("/all-with-deleted")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPERADMIN')")
     public ResponseEntity<Page<ProductDTO>> getAllProductsIncludingDeleted(Pageable pageable) {
         return ResponseEntity.ok(productService.getAllProductsIncludingDeleted(pageable));
     }
 
     @PostMapping("/{productId}/reactivate")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPERADMIN')")
     public ResponseEntity<ProductDTO> reactivateProduct(@PathVariable Long productId) {
         return ResponseEntity.ok(productService.reactivateProduct(productId));
     }
