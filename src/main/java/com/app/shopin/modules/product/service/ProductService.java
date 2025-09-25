@@ -11,6 +11,7 @@ import com.app.shopin.modules.product.entity.ProductMedia;
 import com.app.shopin.modules.product.repository.CategoryRepository;
 import com.app.shopin.modules.product.repository.ProductMediaRepository;
 import com.app.shopin.modules.product.repository.ProductRepository;
+import com.app.shopin.services.cloudinary.ImageType;
 import com.app.shopin.services.cloudinary.StorageService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -281,7 +282,7 @@ public class ProductService {
             fileData = storageService.uploadVideo(file, "products");
             mediaType = "VIDEO";
         } else {
-            fileData = storageService.uploadImage(file, "products");
+            fileData = storageService.uploadImage(file, "products", ImageType.PRODUCT);
             mediaType = "IMAGE";
         }
 

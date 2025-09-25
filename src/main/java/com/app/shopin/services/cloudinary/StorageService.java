@@ -6,10 +6,10 @@ import java.util.Map;
 
 public interface StorageService {
 
-    Map<String, String> uploadImage(MultipartFile file, String subfolder);
+    Map<String, String> uploadImage(MultipartFile file, String subfolder, ImageType imageType);
     Map<String, String> uploadVideo(MultipartFile file, String subfolder);
 
-    Map<String, String> uploadFromUrl(String url, String subfolder);
+    Map<String, String> uploadFromUrl(String url, String subfolder, ImageType imageType);
 
     void deleteFile(String publicId, String resourceType);
 

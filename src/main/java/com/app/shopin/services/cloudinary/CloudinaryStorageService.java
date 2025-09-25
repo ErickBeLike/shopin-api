@@ -32,7 +32,7 @@ public class CloudinaryStorageService implements StorageService {
         this.cloudinary = cloudinary;
     }
 
-    private Map<String, String> upload(MultipartFile file, String subfolder, String resourceType) {
+    private Map<String, String> upload(byte[] fileBytes, String subfolder, String resourceType, ImageType imageType) {
         try {
             String uniqueId = UUID.randomUUID().toString();
             Map<String, Object> uploadParams = new HashMap<>();
@@ -40,12 +40,22 @@ public class CloudinaryStorageService implements StorageService {
             uploadParams.put("folder", subfolder);
             uploadParams.put("resource_type", resourceType);
 
-            if ("image".equals(resourceType)) {
-                // Transformaciones específicas para imágenes
-                uploadParams.put("transformation", new Transformation().width(800).height(800).crop("limit"));
+            if ("image".equals(resourceType) && imageType != null) {
+                Transformation transformation = new Transformation();
+                switch (imageType) {
+                    case PROFILE:
+                        // Receta para fotos de perfil: 96x96, enfocada en la cara.
+                        transformation.width(96).height(96).gravity("face").crop("thumb");
+                        break;
+                    case PRODUCT:
+                        // Receta para fotos de producto: máximo 1080x1080, sin deformar.
+                        transformation.width(1080).height(1080).crop("limit");
+                        break;
+                }
+                uploadParams.put("transformation", transformation);
             }
 
-            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+            Map uploadResult = cloudinary.uploader().upload(fileBytes, uploadParams);
 
             Map<String, String> result = new HashMap<>();
             result.put("url", (String) uploadResult.get("secure_url"));
@@ -58,39 +68,33 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
-    public Map<String, String> uploadImage(MultipartFile file, String subfolder) {
+    public Map<String, String> uploadImage(MultipartFile file, String subfolder, ImageType imageType) {
         if (!isImageFile(file)) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "El archivo proporcionado no es una imagen válida.");
+        } try {
+            return upload(file.getBytes(), subfolder, "image", imageType);
+        } catch (IOException e) {
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al leer el archivo de imagen.");
         }
-        return upload(file, subfolder, "image");
     }
 
     @Override
     public Map<String, String> uploadVideo(MultipartFile file, String subfolder) {
         if (!isVideoFile(file)) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "El archivo proporcionado no es un video válido.");
+        } try {
+            // CORRECCIÓN: Le pasamos los bytes del archivo y null para el ImageType
+            return upload(file.getBytes(), subfolder, "video", null);
+        } catch (IOException e) {
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al leer el archivo de video.");
         }
-        return upload(file, subfolder, "video");
     }
 
     @Override
-    public Map<String, String> uploadFromUrl(String url, String subfolder) {
+    public Map<String, String> uploadFromUrl(String url, String subfolder, ImageType imageType) {
         try {
-            URL imageUrl = new URL(url);
-            byte[] bytes = imageUrl.openStream().readAllBytes();
-
-            String uniqueId = UUID.randomUUID().toString();
-            Map uploadResult = cloudinary.uploader().upload(bytes, ObjectUtils.asMap(
-                    "public_id", uniqueId,
-                    "folder", subfolder,
-                    "resource_type", "image",
-                    "transformation", new Transformation().width(200).height(200).gravity("face").crop("thumb")
-            ));
-
-            Map<String, String> result = new HashMap<>();
-            result.put("url", (String) uploadResult.get("secure_url"));
-            result.put("publicId", (String) uploadResult.get("public_id"));
-            return result;
+            byte[] bytes = new URL(url).openStream().readAllBytes();
+            return upload(bytes, subfolder, "image", imageType);
         } catch (IOException e) {
             log.error("Error al procesar la imagen desde la URL: {}", url, e);
             throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al procesar la imagen desde la URL.");

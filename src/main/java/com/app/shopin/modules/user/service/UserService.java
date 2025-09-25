@@ -19,6 +19,7 @@ import com.app.shopin.modules.user.dto.UpdateUserDataDTO;
 import com.app.shopin.modules.user.dto.UpdateUsernameDTO;
 import com.app.shopin.modules.user.entity.User;
 import com.app.shopin.modules.user.repository.UserRepository;
+import com.app.shopin.services.cloudinary.ImageType;
 import com.app.shopin.services.cloudinary.StorageService;
 import com.app.shopin.services.email.EmailService;
 import com.app.shopin.util.UserResponse;
@@ -127,7 +128,7 @@ public class UserService {
     private Map<String, String> generateAndUploadAvatar(String firstName, String lastName) {
         try {
             String avatarUrl = generateAvatarUrl(firstName, lastName);
-            return storageService.uploadFromUrl(avatarUrl, "profileimages");
+            return storageService.uploadFromUrl(avatarUrl, "profileimages", ImageType.PROFILE);
         } catch (Exception e) {
             return Collections.emptyMap(); // Devuelve un mapa vacío en caso de error
         }
@@ -192,7 +193,7 @@ public class UserService {
         if (profileImage != null && !profileImage.isEmpty()) {
             try {
                 // Intenta subir la imagen proporcionada
-                Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages");
+                Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages", ImageType.PROFILE);
                 user.setProfilePictureUrl(fileInfo.get("url"));
                 user.setProfilePicturePublicId(fileInfo.get("publicId"));
             } catch (Exception e) {
@@ -283,7 +284,7 @@ public class UserService {
                     // AHORA: Especificamos que es una imagen.
                     storageService.deleteFile(user.getProfilePicturePublicId(), "image");
                 }
-                Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages");
+                Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages", ImageType.PROFILE);
                 user.setProfilePictureUrl(fileInfo.get("url"));
                 user.setProfilePicturePublicId(fileInfo.get("publicId"));
             } catch (Exception e) {
@@ -377,7 +378,7 @@ public class UserService {
         if (user.getProfilePicturePublicId() != null) {
             storageService.deleteFile(user.getProfilePicturePublicId(), "image");
         } try {
-            Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages");
+            Map<String, String> fileInfo = storageService.uploadImage(profileImage, "profileimages", ImageType.PROFILE);
             user.setProfilePictureUrl(fileInfo.get("url"));
             user.setProfilePicturePublicId(fileInfo.get("publicId"));
         } catch (Exception e) {

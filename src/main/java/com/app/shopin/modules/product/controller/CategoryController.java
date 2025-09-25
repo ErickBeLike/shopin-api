@@ -32,14 +32,12 @@ public class CategoryController {
 
     // --- ENDPOINTS DE GESTIÓN (PROTEGIDOS PARA ADMINS/EMPLEADOS) ---
     @PostMapping
-    @PreAuthorize("hasAuthority('CREATE_CATEGORY')")
     public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
         CategoryDTO newCategory = categoryService.createCategory(categoryDTO);
         return new ResponseEntity<>(newCategory, HttpStatus.CREATED);
     }
 
     @PutMapping("/{categoryId}")
-    @PreAuthorize("hasAuthority('UPDATE_CATEGORY')")
     public ResponseEntity<CategoryDTO> updateCategory(
             @PathVariable Long categoryId,
             @Valid @RequestBody CategoryDTO categoryDTO) {
@@ -48,7 +46,6 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAuthority('DELETE_CATEGORY')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
         categoryService.deleteCategory(categoryId);
         return ResponseEntity.noContent().build();

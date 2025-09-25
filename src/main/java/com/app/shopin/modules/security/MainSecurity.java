@@ -72,6 +72,8 @@ public class MainSecurity {
                         // 1. Rutas Públicas (no requieren token)
                         .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers("/api/email/send").permitAll() // <-- Faltaba esta
 
                         // 2. Rutas Específicas por Rol
