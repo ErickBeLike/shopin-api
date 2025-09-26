@@ -100,8 +100,9 @@ public class ProductService {
 
         // Llamamos al nuevo helper para hacer el trabajo pesado
         createAndSaveMedia(product, file);
+        Product updatedProduct = productRepository.save(product);
 
-        return mapEntityToDto(product);
+        return mapEntityToDto(updatedProduct);
     }
 
     @Transactional
@@ -120,7 +121,9 @@ public class ProductService {
         }
 
         storageService.deleteFile(media.getPublicId(), media.getMediaType().toLowerCase());
-        productMediaRepository.delete(media);
+        Product product = media.getProduct();
+        product.getMedia().remove(media);
+        productRepository.save(product);
     }
 
     @Transactional
