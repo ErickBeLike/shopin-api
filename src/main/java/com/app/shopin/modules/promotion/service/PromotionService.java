@@ -1,7 +1,9 @@
 package com.app.shopin.modules.promotion.service;
 
 import com.app.shopin.modules.exception.CustomException;
+import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
+import com.app.shopin.modules.product.repository.CategoryRepository;
 import com.app.shopin.modules.product.repository.ProductRepository;
 import com.app.shopin.modules.promotion.dto.PromotionDTO;
 import com.app.shopin.modules.promotion.entity.Promotion;
@@ -24,6 +26,8 @@ public class PromotionService {
     private PromotionRepository promotionRepository;
     @Autowired
     private ProductRepository productRepository;
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Transactional
     public PromotionDTO createPromotion(PromotionDTO promotionDTO) {
@@ -74,13 +78,20 @@ public class PromotionService {
         entity.setEndDate(dto.endDate());
         entity.setActive(dto.isActive());
 
-        // Aquí está la lógica para vincular los productos
+        // 1. Lógica para productos individuales
         if (dto.productIds() != null && !dto.productIds().isEmpty()) {
             List<Product> products = productRepository.findAllById(dto.productIds());
             entity.setProducts(new HashSet<>(products));
         } else {
-            // Si la lista de IDs está vacía, se eliminan todas las asociaciones
             entity.getProducts().clear();
+        }
+
+        // 2. NUEVA LÓGICA para categorías completas
+        if (dto.categoryIds() != null && !dto.categoryIds().isEmpty()) {
+            List<Category> categories = categoryRepository.findAllById(dto.categoryIds());
+            entity.setCategories(new HashSet<>(categories));
+        } else {
+            entity.getCategories().clear();
         }
     }
 
@@ -89,6 +100,10 @@ public class PromotionService {
         List<Long> productIds = entity.getProducts().stream()
                 .map(Product::getId)
                 .collect(Collectors.toList());
+        List<Long> categoryIds = entity.getCategories().stream()
+                .map(Category::getId)
+                .toList();
+
 
         return new PromotionDTO(
                 entity.getId(),
@@ -98,7 +113,8 @@ public class PromotionService {
                 entity.getStartDate(),
                 entity.getEndDate(),
                 entity.isActive(),
-                productIds
+                productIds,
+                categoryIds
         );
     }
 }

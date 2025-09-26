@@ -1,5 +1,6 @@
 package com.app.shopin.modules.promotion.entity;
 
+import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
 import jakarta.persistence.*;
 
@@ -40,6 +41,14 @@ public class Promotion {
             inverseJoinColumns = @JoinColumn(name = "product_id")
     )
     private Set<Product> products = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "promotions_categories",
+            joinColumns = @JoinColumn(name = "promotion_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -103,5 +112,13 @@ public class Promotion {
 
     public void setProducts(Set<Product> products) {
         this.products = products;
+    }
+
+    public Set<Category> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(Set<Category> categories) {
+        this.categories = categories;
     }
 }

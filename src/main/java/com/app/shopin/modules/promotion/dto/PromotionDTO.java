@@ -25,5 +25,7 @@ public record PromotionDTO(
 
         boolean isActive,
 
-        List<Long> productIds
+        List<Long> productIds,
+        List<Long> categoryIds
+
 ) {}
