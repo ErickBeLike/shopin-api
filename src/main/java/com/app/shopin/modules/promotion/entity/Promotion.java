@@ -3,6 +3,8 @@ package com.app.shopin.modules.promotion.entity;
 import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -10,6 +12,8 @@ import java.util.Set;
 
 @Entity
 @Table(name = "promotions")
+@SQLDelete(sql = "UPDATE promotions SET deleted_at = NOW() WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class Promotion {
 
     @Id
@@ -49,6 +53,18 @@ public class Promotion {
             inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private Set<Category> categories = new HashSet<>();
+
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+    @Column
+    private LocalDateTime updatedAt;
+    @Column
+    private LocalDateTime deletedAt;
+
+    @PrePersist
+    protected void onCreate() { this.createdAt = LocalDateTime.now(); }
+    @PreUpdate
+    protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }
 
     public Long getId() {
         return id;
@@ -120,5 +136,29 @@ public class Promotion {
 
     public void setCategories(Set<Category> categories) {
         this.categories = categories;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

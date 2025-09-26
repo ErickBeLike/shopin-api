@@ -6,6 +6,7 @@ import com.app.shopin.modules.product.entity.Product;
 import com.app.shopin.modules.product.repository.CategoryRepository;
 import com.app.shopin.modules.product.repository.ProductRepository;
 import com.app.shopin.modules.promotion.dto.PromotionDTO;
+import com.app.shopin.modules.promotion.dto.UpdatePromotionStatusDTO;
 import com.app.shopin.modules.promotion.entity.Promotion;
 import com.app.shopin.modules.promotion.repository.PromotionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,11 +51,43 @@ public class PromotionService {
     }
 
     @Transactional
+    public PromotionDTO updatePromotionStatus(Long promotionId, UpdatePromotionStatusDTO dto) {
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
+
+        promotion.setActive(dto.isActive());
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    @Transactional
     public void deletePromotion(Long promotionId) {
         if (!promotionRepository.existsById(promotionId)) {
             throw new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada.");
         }
         promotionRepository.deleteById(promotionId);
+    }
+
+    @Transactional
+    public PromotionDTO reactivatePromotion(Long promotionId) {
+        Promotion promotion = promotionRepository.findWithDeletedById(promotionId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
+
+        if (promotion.getDeletedAt() == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "La promoción ya está activa.");
+        }
+
+        promotion.setDeletedAt(null);
+        Promotion reactivatedPromotion = promotionRepository.save(promotion);
+
+        return mapEntityToDto(reactivatedPromotion);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PromotionDTO> getActivePromotions() {
+        return promotionRepository.findAllActivePromotions(LocalDateTime.now()).stream()
+                .map(this::mapEntityToDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

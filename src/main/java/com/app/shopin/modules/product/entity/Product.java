@@ -40,7 +40,7 @@ public class Product {
 
     @Column
     private Integer discountPercent;
-    @ManyToMany(mappedBy = "products")
+    @ManyToMany(mappedBy = "products", fetch = FetchType.EAGER)
     private Set<Promotion> promotions = new HashSet<>();
 
     @Column(nullable = false)
@@ -183,15 +183,30 @@ public class Product {
 
     @Transient
     public BigDecimal getEffectivePrice() {
-        // Si no hay un porcentaje de descuento o es cero, devuelve el precio normal.
-        if (this.discountPercent == null || this.discountPercent <= 0) {
+        // 1. Buscamos la mejor promoción activa para este producto
+        Integer bestPromotionPercent = this.getPromotions().stream()
+                .filter(promo ->
+                        promo.isActive() &&
+                                (promo.getStartDate() == null || !LocalDateTime.now().isBefore(promo.getStartDate())) &&
+                                (promo.getEndDate() == null || !LocalDateTime.now().isAfter(promo.getEndDate()))
+                )
+                .map(Promotion::getDiscountPercent)
+                .max(Integer::compareTo) // Encontramos el porcentaje más alto
+                .orElse(0); // Si no hay promociones, el descuento es 0
+
+        // 2. Comparamos el descuento de la promoción con el descuento individual del producto
+        Integer finalDiscountPercent = Math.max(
+                bestPromotionPercent,
+                this.getDiscountPercent() != null ? this.getDiscountPercent() : 0
+        );
+
+        // 3. Si no hay ningún descuento, devolvemos el precio normal
+        if (finalDiscountPercent <= 0) {
             return this.price;
         }
 
-        // Si hay descuento, calcúlalo.
-        BigDecimal discountMultiplier = BigDecimal.valueOf(100 - this.discountPercent)
-                .divide(BigDecimal.valueOf(100));
-
+        // 4. Aplicamos el MEJOR descuento
+        BigDecimal discountMultiplier = BigDecimal.valueOf(100 - finalDiscountPercent).divide(BigDecimal.valueOf(100));
         return this.price.multiply(discountMultiplier).setScale(2, RoundingMode.HALF_UP);
     }
 }

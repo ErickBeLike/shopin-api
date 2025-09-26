@@ -1,6 +1,7 @@
 package com.app.shopin.modules.promotion.controller;
 
 import com.app.shopin.modules.promotion.dto.PromotionDTO;
+import com.app.shopin.modules.promotion.dto.UpdatePromotionStatusDTO;
 import com.app.shopin.modules.promotion.service.PromotionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/promotions")
 // Protegemos toda la clase. Solo usuarios con este permiso pueden gestionar promociones.
@@ -19,10 +22,9 @@ public class PromotionController {
     @Autowired
     private PromotionService promotionService;
 
-    @PostMapping
-    public ResponseEntity<PromotionDTO> createPromotion(@Valid @RequestBody PromotionDTO promotionDTO) {
-        PromotionDTO createdPromotion = promotionService.createPromotion(promotionDTO);
-        return new ResponseEntity<>(createdPromotion, HttpStatus.CREATED);
+    @GetMapping("/active")
+    public ResponseEntity<List<PromotionDTO>> getActivePromotions() {
+        return ResponseEntity.ok(promotionService.getActivePromotions());
     }
 
     @GetMapping
@@ -35,6 +37,12 @@ public class PromotionController {
         return ResponseEntity.ok(promotionService.getPromotionById(promotionId));
     }
 
+    @PostMapping
+    public ResponseEntity<PromotionDTO> createPromotion(@Valid @RequestBody PromotionDTO promotionDTO) {
+        PromotionDTO createdPromotion = promotionService.createPromotion(promotionDTO);
+        return new ResponseEntity<>(createdPromotion, HttpStatus.CREATED);
+    }
+
     @PutMapping("/{promotionId}")
     public ResponseEntity<PromotionDTO> updatePromotion(
             @PathVariable Long promotionId,
@@ -43,9 +51,20 @@ public class PromotionController {
         return ResponseEntity.ok(updatedPromotion);
     }
 
+    @PatchMapping("/{promotionId}/status")
+    public ResponseEntity<PromotionDTO> updateStatus(@PathVariable Long promotionId, @RequestBody UpdatePromotionStatusDTO dto) {
+        return ResponseEntity.ok(promotionService.updatePromotionStatus(promotionId, dto));
+    }
+
     @DeleteMapping("/{promotionId}")
     public ResponseEntity<Void> deletePromotion(@PathVariable Long promotionId) {
         promotionService.deletePromotion(promotionId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{promotionId}/reactivate")
+    public ResponseEntity<PromotionDTO> reactivatePromotion(@PathVariable Long promotionId) {
+        PromotionDTO reactivatedPromotion = promotionService.reactivatePromotion(promotionId);
+        return ResponseEntity.ok(reactivatedPromotion);
     }
 }
