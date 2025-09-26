@@ -1,5 +1,6 @@
 package com.app.shopin.modules.product.entity;
 
+import com.app.shopin.modules.promotion.entity.Promotion;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
@@ -8,7 +9,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "products")
@@ -37,6 +40,8 @@ public class Product {
 
     @Column
     private Integer discountPercent;
+    @ManyToMany(mappedBy = "products")
+    private Set<Promotion> promotions = new HashSet<>();
 
     @Column(nullable = false)
     private Integer stockQuantity;
@@ -118,6 +123,14 @@ public class Product {
 
     public void setDiscountPercent(Integer discountPercent) {
         this.discountPercent = discountPercent;
+    }
+
+    public Set<Promotion> getPromotions() {
+        return promotions;
+    }
+
+    public void setPromotions(Set<Promotion> promotions) {
+        this.promotions = promotions;
     }
 
     public Integer getStockQuantity() {
