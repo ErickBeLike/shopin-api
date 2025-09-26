@@ -1,10 +1,7 @@
 package com.app.shopin.modules.product.service;
 
 import com.app.shopin.modules.exception.CustomException;
-import com.app.shopin.modules.product.dto.ProductDTO;
-import com.app.shopin.modules.product.dto.ProductMediaDTO;
-import com.app.shopin.modules.product.dto.UpdatePriceDTO;
-import com.app.shopin.modules.product.dto.UpdateStockDTO;
+import com.app.shopin.modules.product.dto.*;
 import com.app.shopin.modules.product.entity.Category;
 import com.app.shopin.modules.product.entity.Product;
 import com.app.shopin.modules.product.entity.ProductMedia;
@@ -24,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -155,6 +153,21 @@ public class ProductService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
         product.setStockQuantity(stockDTO.newStock());
+        productRepository.save(product);
+        return mapEntityToDto(product);
+    }
+
+    @Transactional
+    public ProductDTO restockProduct(Long productId, RestockDTO restockDTO) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        int currentStock = product.getStockQuantity();
+        int quantityToAdd = restockDTO.quantityToAdd();
+
+        product.setStockQuantity(currentStock + quantityToAdd);
+        product.setLastRefilledAt(LocalDateTime.now());
+
         productRepository.save(product);
         return mapEntityToDto(product);
     }

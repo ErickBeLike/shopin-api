@@ -1,6 +1,7 @@
 package com.app.shopin.modules.product.controller;
 
 import com.app.shopin.modules.product.dto.ProductDTO;
+import com.app.shopin.modules.product.dto.RestockDTO;
 import com.app.shopin.modules.product.dto.UpdatePriceDTO;
 import com.app.shopin.modules.product.dto.UpdateStockDTO;
 import com.app.shopin.modules.product.service.ProductService;
@@ -100,6 +101,13 @@ public class ProductController {
     @PatchMapping("/{productId}/stock")
     public ResponseEntity<ProductDTO> updateStock(@PathVariable Long productId, @RequestBody @Valid UpdateStockDTO stockDTO) {
         return ResponseEntity.ok(productService.updateStock(productId, stockDTO));
+    }
+
+    @PostMapping("/{productId}/restock")
+    public ResponseEntity<ProductDTO> restockProduct(
+            @PathVariable Long productId,
+            @RequestBody @Valid RestockDTO restockDTO) {
+        return ResponseEntity.ok(productService.restockProduct(productId, restockDTO));
     }
 
     @PatchMapping("/{productId}/price")
