@@ -32,95 +32,95 @@ public class CloudinaryStorageService implements StorageService {
         this.cloudinary = cloudinary;
     }
 
-    @Override
-    public Map<String, String> saveFile(MultipartFile file, String filename, String subfolder) {
+    private Map<String, String> upload(byte[] fileBytes, String subfolder, String resourceType, ImageType imageType) {
         try {
-            // Genera solo el ID único, sin la subcarpeta
             String uniqueId = UUID.randomUUID().toString();
+            Map<String, Object> uploadParams = new HashMap<>();
+            uploadParams.put("public_id", uniqueId);
+            uploadParams.put("folder", subfolder);
+            uploadParams.put("resource_type", resourceType);
 
-            // Sube el archivo, usando el parámetro 'folder' para la carpeta
-            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
-                    "public_id", uniqueId, // <--- Solo el ID único
-                    "folder", subfolder, // <--- Se usa el parámetro folder
-                    "resource_type", "auto",
-                    "transformation", new Transformation().width(96).height(96).gravity("face").crop("thumb")));
+            if ("image".equals(resourceType) && imageType != null) {
+                Transformation transformation = new Transformation();
+                switch (imageType) {
+                    case PROFILE:
+                        // Receta para fotos de perfil: 96x96, enfocada en la cara.
+                        transformation.width(96).height(96).gravity("face").crop("thumb");
+                        break;
+                    case PRODUCT:
+                        // Receta para fotos de producto: máximo 1080x1080, sin deformar.
+                        transformation.width(1080).height(1080).crop("limit");
+                        break;
+                }
+                uploadParams.put("transformation", transformation);
+            }
 
-            // Crea un mapa para devolver tanto la URL como el publicId
-            Map<String, String> result = new HashMap<>();
-            // La URL completa ya tiene la ruta correcta: /folder/public_id.extension
-            result.put("url", (String) uploadResult.get("secure_url"));
-            // El publicId que guardas debe incluir la carpeta para el borrado
-            result.put("publicId", (String) uploadResult.get("public_id")); // <-- ¡Esto es crucial!
-
-            return result;
-        } catch (IOException e) {
-            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al subir el archivo a Cloudinary");
-        }
-    }
-
-    @Override
-    public Map<String, String> uploadFromUrl(String url, String subfolder) {
-        try {
-            // 1. Abrir un stream a la URL de la imagen
-            URL imageUrl = new URL(url);
-            InputStream inputStream = imageUrl.openStream();
-            byte[] bytes = inputStream.readAllBytes();
-            inputStream.close();
-
-            // 2. Lógica de subida (es casi idéntica a saveFile)
-            String uniqueId = UUID.randomUUID().toString();
-            Map uploadResult = cloudinary.uploader().upload(bytes, ObjectUtils.asMap(
-                    "public_id", uniqueId,
-                    "folder", subfolder,
-                    "resource_type", "image",
-                    "transformation", new Transformation().width(96).height(96).gravity("face").crop("thumb")
-            ));
+            Map uploadResult = cloudinary.uploader().upload(fileBytes, uploadParams);
 
             Map<String, String> result = new HashMap<>();
             result.put("url", (String) uploadResult.get("secure_url"));
             result.put("publicId", (String) uploadResult.get("public_id"));
-
             return result;
         } catch (IOException e) {
-            log.error("Error al descargar o subir la imagen desde la URL: {}", url, e);
-            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al procesar la imagen desde la URL");
+            log.error("Error al subir archivo a Cloudinary", e);
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al subir el archivo.");
         }
     }
 
     @Override
-    public void deleteFile(String publicId, String subfolder) {
-        try {
-            if (publicId == null || publicId.isBlank()) {
-                log.warn("Intento de eliminar archivo nulo o vacío. Operación omitida.");
-                return;
-            }
-
-            log.info("Intentando eliminar archivo con publicId: {}", publicId);
-
-            Map result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
-
-            String destroyResult = (String) result.get("result");
-            if ("ok".equals(destroyResult) || "not found".equals(destroyResult)) {
-                log.info("Archivo eliminado exitosamente. Resultado: {}", destroyResult);
-            } else {
-                log.error("Error al eliminar archivo en Cloudinary. PublicId: {}, Resultado: {}", publicId, destroyResult);
-                throw new CustomException(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Error al eliminar la imagen en Cloudinary. Resultado: " + destroyResult
-                );
-            }
-
+    public Map<String, String> uploadImage(MultipartFile file, String subfolder, ImageType imageType) {
+        if (!isImageFile(file)) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "El archivo proporcionado no es una imagen válida.");
+        } try {
+            return upload(file.getBytes(), subfolder, "image", imageType);
         } catch (IOException e) {
-            log.error("Error de E/S al intentar eliminar la imagen: {}", e.getMessage());
-            throw new CustomException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error de E/S al intentar eliminar la imagen de Cloudinary: " + e.getMessage()
-            );
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al leer el archivo de imagen.");
+        }
+    }
+
+    @Override
+    public Map<String, String> uploadVideo(MultipartFile file, String subfolder) {
+        if (!isVideoFile(file)) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "El archivo proporcionado no es un video válido.");
+        } try {
+            // CORRECCIÓN: Le pasamos los bytes del archivo y null para el ImageType
+            return upload(file.getBytes(), subfolder, "video", null);
+        } catch (IOException e) {
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al leer el archivo de video.");
+        }
+    }
+
+    @Override
+    public Map<String, String> uploadFromUrl(String url, String subfolder, ImageType imageType) {
+        try {
+            byte[] bytes = new URL(url).openStream().readAllBytes();
+            return upload(bytes, subfolder, "image", imageType);
+        } catch (IOException e) {
+            log.error("Error al procesar la imagen desde la URL: {}", url, e);
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al procesar la imagen desde la URL.");
+        }
+    }
+
+    @Override
+    public void deleteFile(String publicId, String resourceType) {
+        try {
+            if (publicId == null || publicId.isBlank()) return;
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", resourceType));
+        } catch (IOException e) {
+            log.error("Error al eliminar archivo de Cloudinary: {}", publicId, e);
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al eliminar el archivo.");
         }
     }
 
     @Override
     public boolean isImageFile(MultipartFile file) {
-        return file.getContentType() != null && file.getContentType().startsWith("image/");
+        String contentType = file.getContentType();
+        return contentType != null && contentType.startsWith("image/");
+    }
+
+    @Override
+    public boolean isVideoFile(MultipartFile file) {
+        String contentType = file.getContentType();
+        return contentType != null && contentType.startsWith("video/");
     }
 }

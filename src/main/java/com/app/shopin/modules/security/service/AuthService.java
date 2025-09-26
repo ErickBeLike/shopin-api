@@ -12,6 +12,7 @@ import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.RolName;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
 import com.app.shopin.modules.user.service.UserService;
+import com.app.shopin.services.cloudinary.ImageType;
 import com.app.shopin.services.cloudinary.StorageService;
 import com.app.shopin.services.email.EmailService;
 import com.app.shopin.util.UserResponse;
@@ -248,7 +249,7 @@ public class AuthService {
         // 6. Subimos la foto de perfil
         try {
             if (tempInfo.pictureUrl() != null && !tempInfo.pictureUrl().isEmpty()) {
-                Map<String, String> fileInfo = storageService.uploadFromUrl(tempInfo.pictureUrl(), "profileimages");
+                Map<String, String> fileInfo = storageService.uploadFromUrl(tempInfo.pictureUrl(), "profileimages", ImageType.PROFILE);
                 newUser.setProfilePictureUrl(fileInfo.get("url"));
                 newUser.setProfilePicturePublicId(fileInfo.get("publicId"));
             }
