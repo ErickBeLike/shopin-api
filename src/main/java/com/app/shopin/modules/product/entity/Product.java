@@ -40,6 +40,8 @@ public class Product {
 
     @Column(nullable = false)
     private Integer stockQuantity;
+    @Column
+    private LocalDateTime lastRefilledAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
@@ -124,6 +126,14 @@ public class Product {
 
     public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public LocalDateTime getLastRefilledAt() {
+        return lastRefilledAt;
+    }
+
+    public void setLastRefilledAt(LocalDateTime lastRefilledAt) {
+        this.lastRefilledAt = lastRefilledAt;
     }
 
     public Category getCategory() {
