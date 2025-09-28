@@ -69,19 +69,15 @@ public class MainSecurity {
 
                 // --- INICIO DE LAS REGLAS DE ACCESO COMPLETAS ---
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Rutas Públicas (no requieren token)
+                        // 1. Rutas 100% Públicas
                         .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
-                        .requestMatchers("/api/email/send").permitAll() // <-- Faltaba esta
+                        .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/promotions/**").permitAll()
 
-                        // 2. Rutas Específicas por Rol
-                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN") // <-- Faltaba esta
-                        .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "SUPERADMIN", "EMPLOYEE") // <-- Faltaba esta
+                        // 2. CUALQUIER OTRA RUTA bajo /api/ requiere como MÍNIMO estar autenticado
+                        .requestMatchers("/api/**").authenticated()
 
-                        // 3. Cualquier otra petición requiere autenticación
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 // --- FIN DE LAS REGLAS DE ACCESO ---
 

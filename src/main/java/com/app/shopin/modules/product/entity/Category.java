@@ -1,5 +1,6 @@
 package com.app.shopin.modules.product.entity;
 
+import com.app.shopin.modules.promotion.entity.Promotion;
 import jakarta.persistence.*;
 
 import java.util.HashSet;
@@ -22,6 +23,9 @@ public class Category {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;
+
+    @ManyToMany(mappedBy = "categories")
+    private Set<Promotion> promotions = new HashSet<>();
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private Set<Category> children = new HashSet<>();
