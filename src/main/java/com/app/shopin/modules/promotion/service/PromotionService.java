@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,6 +57,82 @@ public class PromotionService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
 
         promotion.setActive(dto.isActive());
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    // PRODUCT PROMOTION SECTION
+    @Transactional
+    public PromotionDTO addProductToPromotion(Long promotionId, Long productId) {
+        Promotion promotion = promotionRepository.findById(promotionId).orElseThrow(/* ... */);
+        Product product = productRepository.findById(productId).orElseThrow(/* ... */);
+        promotion.getProducts().add(product);
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    @Transactional
+    public PromotionDTO removeProductFromPromotion(Long promotionId, Long productId) {
+        Promotion promotion = promotionRepository.findById(promotionId).orElseThrow(/* ... */);
+        Product product = productRepository.findById(productId).orElseThrow(/* ... */);
+        promotion.getProducts().remove(product);
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    // CATEGORY PROMOTION SECTION
+    @Transactional
+    public PromotionDTO addCategoryToPromotion(Long promotionId, Long categoryId) {
+        Promotion promotion = promotionRepository.findById(promotionId).orElseThrow(/* ... */);
+        Category category = categoryRepository.findById(categoryId).orElseThrow(/* ... */);
+
+        // TU REGLA DE NEGOCIO: Evitar añadir una subcategoría si el padre ya está.
+        if (isAncestorInCategorySet(category, promotion.getCategories())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "La categoría padre de esta subcategoría ya está incluida en la promoción.");
+        }
+
+        promotion.getCategories().add(category);
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    @Transactional
+    public PromotionDTO removeCategoryFromPromotion(Long promotionId, Long categoryId) {
+        Promotion promotion = promotionRepository.findById(promotionId).orElseThrow(/* ... */);
+        Category category = categoryRepository.findById(categoryId).orElseThrow(/* ... */);
+        promotion.getCategories().remove(category);
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    // GRANULAR CLEAN SECTION
+    @Transactional
+    public PromotionDTO clearProductsFromPromotion(Long promotionId) {
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
+        promotion.getProducts().clear();
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    @Transactional
+    public PromotionDTO clearCategoriesFromPromotion(Long promotionId) {
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
+        promotion.getCategories().clear();
+        promotionRepository.save(promotion);
+        return mapEntityToDto(promotion);
+    }
+
+    // GENERAL CLEAN SECTION
+    @Transactional
+    public PromotionDTO clearAllAssociations(Long promotionId) {
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
+
+        promotion.getProducts().clear();
+        promotion.getCategories().clear();
+
         promotionRepository.save(promotion);
         return mapEntityToDto(promotion);
     }
@@ -100,6 +177,17 @@ public class PromotionService {
         return promotionRepository.findById(promotionId)
                 .map(this::mapEntityToDto)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Promoción no encontrada."));
+    }
+
+    private boolean isAncestorInCategorySet(Category category, Set<Category> categorySet) {
+        Category parent = category.getParent();
+        while (parent != null) {
+            if (categorySet.contains(parent)) {
+                return true;
+            }
+            parent = parent.getParent();
+        }
+        return false;
     }
 
     // --- MÉTODOS DE AYUDA (Mappers) ---

@@ -1,5 +1,7 @@
 package com.app.shopin.modules.promotion.controller;
 
+import com.app.shopin.modules.promotion.dto.ManageCategoryInPromotionDTO;
+import com.app.shopin.modules.promotion.dto.ManageProductInPromotionDTO;
 import com.app.shopin.modules.promotion.dto.PromotionDTO;
 import com.app.shopin.modules.promotion.dto.UpdatePromotionStatusDTO;
 import com.app.shopin.modules.promotion.service.PromotionService;
@@ -54,6 +56,53 @@ public class PromotionController {
     @PatchMapping("/{promotionId}/status")
     public ResponseEntity<PromotionDTO> updateStatus(@PathVariable Long promotionId, @RequestBody UpdatePromotionStatusDTO dto) {
         return ResponseEntity.ok(promotionService.updatePromotionStatus(promotionId, dto));
+    }
+
+    // PRODUCT PROMOTION SECTION
+    @PostMapping("/{promotionId}/products")
+    public ResponseEntity<PromotionDTO> addProductToPromotion(
+            @PathVariable Long promotionId,
+            @RequestBody ManageProductInPromotionDTO dto) {
+        return ResponseEntity.ok(promotionService.addProductToPromotion(promotionId, dto.productId()));
+    }
+
+    @DeleteMapping("/{promotionId}/products/{productId}")
+    public ResponseEntity<PromotionDTO> removeProductFromPromotion(
+            @PathVariable Long promotionId,
+            @PathVariable Long productId) {
+        return ResponseEntity.ok(promotionService.removeProductFromPromotion(promotionId, productId));
+    }
+
+    // CATEGORY PROMOTION SECTION
+    @PostMapping("/{promotionId}/categories")
+    public ResponseEntity<PromotionDTO> addCategoryToPromotion(
+            @PathVariable Long promotionId,
+            @RequestBody ManageCategoryInPromotionDTO dto) {
+        return ResponseEntity.ok(promotionService.addCategoryToPromotion(promotionId, dto.categoryId()));
+    }
+
+    @DeleteMapping("/{promotionId}/categories/{categoryId}")
+    public ResponseEntity<PromotionDTO> removeCategoryFromPromotion(
+            @PathVariable Long promotionId,
+            @PathVariable Long categoryId) {
+        return ResponseEntity.ok(promotionService.removeCategoryFromPromotion(promotionId, categoryId));
+    }
+
+    // GRANULAR CLEAN SECTION
+    @DeleteMapping("/{promotionId}/products")
+    public ResponseEntity<PromotionDTO> clearProducts(@PathVariable Long promotionId) {
+        return ResponseEntity.ok(promotionService.clearProductsFromPromotion(promotionId));
+    }
+
+    @DeleteMapping("/{promotionId}/categories")
+    public ResponseEntity<PromotionDTO> clearCategories(@PathVariable Long promotionId) {
+        return ResponseEntity.ok(promotionService.clearCategoriesFromPromotion(promotionId));
+    }
+
+    // GENERAL CLEAN SECTION
+    @DeleteMapping("/{promotionId}/associations")
+    public ResponseEntity<PromotionDTO> clearAssociations(@PathVariable Long promotionId) {
+        return ResponseEntity.ok(promotionService.clearAllAssociations(promotionId));
     }
 
     @DeleteMapping("/{promotionId}")
