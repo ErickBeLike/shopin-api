@@ -1,6 +1,7 @@
 package com.app.shopin.modules.user.service;
 
 import com.app.shopin.modules.exception.CustomException;
+import com.app.shopin.modules.favorites.service.FavoriteService;
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
 import com.app.shopin.modules.security.dto.twofactor.CodeConfirmationDTO;
 import com.app.shopin.modules.security.dto.twofactor.PasswordConfirmationDTO;
@@ -66,6 +67,9 @@ public class UserService {
 
     @Autowired
     private TwoFactorService twoFactorService;
+
+    @Autowired
+    private FavoriteService favoriteService;
 
     private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
         boolean isAdmin = currentUser.getAuthorities().stream()
@@ -210,6 +214,7 @@ public class UserService {
         }
 
         userRepository.save(user);
+        favoriteService.createDefaultListForUser(user);
         return new UserResponse("Usuario " + user.getFullTag() + " ha sido creado");
     }
 
