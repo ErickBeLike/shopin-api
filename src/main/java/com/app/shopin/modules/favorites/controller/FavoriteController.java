@@ -3,7 +3,7 @@ package com.app.shopin.modules.favorites.controller;
 import com.app.shopin.modules.favorites.dto.AssignProductToListsDTO;
 import com.app.shopin.modules.favorites.dto.CreateFavoriteListDTO;
 import com.app.shopin.modules.favorites.dto.FavoriteListDTO;
-import com.app.shopin.modules.favorites.dto.UpdateFavoriteListNameDTO;
+import com.app.shopin.modules.favorites.dto.UpdateFavoriteListDTO;
 import com.app.shopin.modules.favorites.service.FavoriteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ public class FavoriteController {
     public ResponseEntity<FavoriteListDTO> createList(
             @Valid @RequestBody CreateFavoriteListDTO dto,
             @AuthenticationPrincipal UserDetails currentUser) {
-        FavoriteListDTO newList = favoriteService.createList(dto.name(), currentUser);
+        FavoriteListDTO newList = favoriteService.createList(dto, currentUser);
         return new ResponseEntity<>(newList, HttpStatus.CREATED);
     }
 
@@ -47,11 +47,11 @@ public class FavoriteController {
     }
 
     @PutMapping("/lists/{listId}")
-    public ResponseEntity<FavoriteListDTO> updateListName(
+    public ResponseEntity<FavoriteListDTO> updateList(
             @PathVariable Long listId,
-            @Valid @RequestBody UpdateFavoriteListNameDTO dto,
+            @Valid @RequestBody UpdateFavoriteListDTO dto,
             @AuthenticationPrincipal UserDetails currentUser) {
-        return ResponseEntity.ok(favoriteService.updateListName(listId, dto.name(), currentUser));
+        return ResponseEntity.ok(favoriteService.updateListName(listId, dto, currentUser));
     }
 
     @DeleteMapping("/lists/{listId}")

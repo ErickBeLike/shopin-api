@@ -2,8 +2,11 @@ package com.app.shopin.modules.favorites.service;
 
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.favorites.dto.AssignProductToListsDTO;
+import com.app.shopin.modules.favorites.dto.CreateFavoriteListDTO;
 import com.app.shopin.modules.favorites.dto.FavoriteListDTO;
+import com.app.shopin.modules.favorites.dto.UpdateFavoriteListDTO;
 import com.app.shopin.modules.favorites.entity.FavoriteList;
+import com.app.shopin.modules.favorites.entity.FavoriteListIcon;
 import com.app.shopin.modules.favorites.repository.FavoriteListRepository;
 import com.app.shopin.modules.product.entity.Product;
 import com.app.shopin.modules.product.repository.ProductRepository;
@@ -21,8 +24,10 @@ import java.util.stream.Collectors;
 @Service
 public class FavoriteService {
 
-    @Autowired private FavoriteListRepository favoriteListRepository;
-    @Autowired private ProductRepository productRepository;
+    @Autowired
+    private FavoriteListRepository favoriteListRepository;
+    @Autowired
+    private ProductRepository productRepository;
 
     // --- LÓGICA DE CREACIÓN INICIAL ---
     @Transactional
@@ -31,31 +36,42 @@ public class FavoriteService {
         FavoriteList defaultList = new FavoriteList();
         defaultList.setName("Mis Favoritos");
         defaultList.setUser(user);
+        defaultList.setIcon(FavoriteListIcon.HEART);
         favoriteListRepository.save(defaultList);
     }
 
     // --- GESTIÓN DE LISTAS ---
     @Transactional
-    public FavoriteListDTO createList(String name, UserDetails currentUser) {
+    public FavoriteListDTO createList(CreateFavoriteListDTO dto, UserDetails currentUser) {
         User user = ((PrincipalUser) currentUser).getUser();
 
         // Evitamos nombres de lista duplicados para el mismo usuario
-        if (favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getUserId(), name).isPresent()) {
+        if (favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getUserId(), dto.name()).isPresent()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Ya tienes una lista con ese nombre.");
         }
 
         FavoriteList newList = new FavoriteList();
-        newList.setName(name);
+        newList.setName(dto.name());
         newList.setUser(user);
+        newList.setIcon(dto.icon());
 
         FavoriteList savedList = favoriteListRepository.save(newList);
         return mapEntityToDto(savedList);
     }
 
     @Transactional
-    public FavoriteListDTO updateListName(Long listId, String newName, UserDetails currentUser) {
+    public FavoriteListDTO updateListName(Long listId, UpdateFavoriteListDTO dto, UserDetails currentUser) {
         FavoriteList list = getAndVerifyOwnership(listId, currentUser);
-        list.setName(newName);
+
+        // Actualizamos el nombre solo si se proporciona uno nuevo
+        if (dto.name() != null && !dto.name().isBlank()) {
+            list.setName(dto.name());
+        }
+        // Actualizamos el icono solo si se proporciona uno nuevo
+        if (dto.icon() != null) {
+            list.setIcon(dto.icon());
+        }
+
         favoriteListRepository.save(list);
         return mapEntityToDto(list);
     }
@@ -134,6 +150,6 @@ public class FavoriteService {
                 .map(Product::getId)
                 .collect(Collectors.toList());
 
-        return new FavoriteListDTO(list.getId(), list.getName(), productIds);
+        return new FavoriteListDTO(list.getId(), list.getName(), list.getIcon(), productIds);
     }
 }

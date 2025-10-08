@@ -29,6 +29,10 @@ public class FavoriteList {
     )
     private Set<Product> products = new HashSet<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column
+    private FavoriteListIcon icon;
+
     public Long getId() {
         return id;
     }
@@ -59,5 +63,13 @@ public class FavoriteList {
 
     public void setProducts(Set<Product> products) {
         this.products = products;
+    }
+
+    public FavoriteListIcon getIcon() {
+        return icon;
+    }
+
+    public void setIcon(FavoriteListIcon icon) {
+        this.icon = icon;
     }
 }
