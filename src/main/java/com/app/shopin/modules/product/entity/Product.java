@@ -1,5 +1,6 @@
 package com.app.shopin.modules.product.entity;
 
+import com.app.shopin.modules.favorites.entity.FavoriteList;
 import com.app.shopin.modules.promotion.entity.Promotion;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
@@ -51,6 +52,10 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    // FavoriteList
+    @ManyToMany(mappedBy = "products")
+    private Set<FavoriteList> favoriteLists = new HashSet<>();
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -155,6 +160,14 @@ public class Product {
 
     public void setCategory(Category category) {
         this.category = category;
+    }
+
+    public Set<FavoriteList> getFavoriteLists() {
+        return favoriteLists;
+    }
+
+    public void setFavoriteLists(Set<FavoriteList> favoriteLists) {
+        this.favoriteLists = favoriteLists;
     }
 
     public LocalDateTime getCreatedAt() {

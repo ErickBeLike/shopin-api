@@ -1,6 +1,7 @@
 package com.app.shopin.modules.user.entity;
 
 // import com.app.shopin.entity.employee.Employee;
+import com.app.shopin.modules.favorites.entity.FavoriteList;
 import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
@@ -98,6 +99,10 @@ public class User {
 
     // @OneToOne(mappedBy = "user")  // Relación bidireccional
     // private Employee employee;
+
+    // FavoriteList
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<FavoriteList> favoriteLists = new HashSet<>();
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -225,6 +230,14 @@ public class User {
 
     public void setAddresses(Set<Address> addresses) {
         this.addresses = addresses;
+    }
+
+    public Set<FavoriteList> getFavoriteLists() {
+        return favoriteLists;
+    }
+
+    public void setFavoriteLists(Set<FavoriteList> favoriteLists) {
+        this.favoriteLists = favoriteLists;
     }
 
     public Set<Rol> getRoles() {
