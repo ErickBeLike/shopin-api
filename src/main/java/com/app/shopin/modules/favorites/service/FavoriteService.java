@@ -46,7 +46,7 @@ public class FavoriteService {
         User user = ((PrincipalUser) currentUser).getUser();
 
         // Evitamos nombres de lista duplicados para el mismo usuario
-        if (favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getUserId(), dto.name()).isPresent()) {
+        if (favoriteListRepository.findByUserUserIdAndNameIgnoreCase(user.getUserId(), dto.name()).isPresent()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Ya tienes una lista con ese nombre.");
         }
 
@@ -63,6 +63,9 @@ public class FavoriteService {
     public FavoriteListDTO updateListName(Long listId, UpdateFavoriteListDTO dto, UserDetails currentUser) {
         FavoriteList list = getAndVerifyOwnership(listId, currentUser);
 
+        if ("Mis Favoritos".equalsIgnoreCase(list.getName())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "No se puede editar la lista de favoritos principal.");
+        }
         // Actualizamos el nombre solo si se proporciona uno nuevo
         if (dto.name() != null && !dto.name().isBlank()) {
             list.setName(dto.name());
@@ -97,7 +100,7 @@ public class FavoriteService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
         // 1. Obtenemos TODAS las listas del usuario.
-        List<FavoriteList> allUserLists = favoriteListRepository.findByUserId(user.getUserId());
+        List<FavoriteList> allUserLists = favoriteListRepository.findByUserUserId(user.getUserId());
 
         // 2. Iteramos sobre cada lista del usuario para sincronizar.
         for (FavoriteList list : allUserLists) {
@@ -121,7 +124,7 @@ public class FavoriteService {
     @Transactional(readOnly = true)
     public List<FavoriteListDTO> getListsForUser(UserDetails currentUser) {
         User user = ((PrincipalUser) currentUser).getUser();
-        return favoriteListRepository.findByUserId(user.getUserId()).stream()
+        return favoriteListRepository.findByUserUserId(user.getUserId()).stream()
                 .map(this::mapEntityToDto)
                 .collect(Collectors.toList());
     }
