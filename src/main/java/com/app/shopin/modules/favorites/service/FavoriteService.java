@@ -119,6 +119,18 @@ public class FavoriteService {
         favoriteListRepository.saveAll(allUserLists);
     }
 
+    // --- NUEVO MÉTODO PARA AÑADIR A UNA SOLA LISTA ---
+    @Transactional
+    public void addProductToSingleList(Long listId, Long productId, UserDetails currentUser) {
+        FavoriteList list = getAndVerifyOwnership(listId, currentUser);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
+
+        // Simplemente añade el producto a la colección de la lista
+        list.getProducts().add(product);
+        favoriteListRepository.save(list);
+    }
+
     // --- MÉTODOS DE LECTURA ---
 
     @Transactional(readOnly = true)

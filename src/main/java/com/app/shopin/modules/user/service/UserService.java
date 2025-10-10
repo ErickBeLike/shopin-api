@@ -1,5 +1,6 @@
 package com.app.shopin.modules.user.service;
 
+import com.app.shopin.modules.cart.service.CartService;
 import com.app.shopin.modules.exception.CustomException;
 import com.app.shopin.modules.favorites.service.FavoriteService;
 import com.app.shopin.modules.security.blacklist.TokenBlacklist;
@@ -70,6 +71,8 @@ public class UserService {
 
     @Autowired
     private FavoriteService favoriteService;
+    @Autowired
+    private CartService cartService;
 
     private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
         boolean isAdmin = currentUser.getAuthorities().stream()
@@ -215,6 +218,7 @@ public class UserService {
 
         userRepository.save(user);
         favoriteService.createDefaultListForUser(user);
+        cartService.createCartForUser(user);
         return new UserResponse("Usuario " + user.getFullTag() + " ha sido creado");
     }
 
