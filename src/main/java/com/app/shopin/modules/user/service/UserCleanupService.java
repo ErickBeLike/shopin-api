@@ -39,10 +39,10 @@ public class UserCleanupService {
             try {
                 storageService.deleteFile(user.getProfilePicturePublicId(), "image");
             } catch (Exception e) {
-                System.err.println("Error al eliminar la imagen del usuario " + user.getUserId() + " de Cloudinary: " + e.getMessage());
+                System.err.println("Error al eliminar la imagen del usuario " + user.getId() + " de Cloudinary: " + e.getMessage());
             }
 
-            userRepository.hardDeleteById(user.getUserId());
+            userRepository.hardDeleteById(user.getId());
         }
         System.out.println("Tarea de limpieza de usuarios completada.");
     }

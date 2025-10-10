@@ -27,29 +27,10 @@ public class AddressService {
     @Autowired
     private UserRepository userRepository;
 
-    private void checkOwnershipOrAdmin(Long ownerUserId, UserDetails currentUser) {
-        boolean isAdmin = currentUser.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
-
-        // 1. Hacemos un cast del UserDetails genérico a nuestra clase específica PrincipalUser
-        PrincipalUser principal = (PrincipalUser) currentUser;
-
-        // 2. "Desempaquetamos" la entidad User real
-        User user = principal.getUser();
-
-        // Ahora la comparación funciona porque estamos comparando Long con Long
-        if (!ownerUserId.equals(user.getUserId()) && !isAdmin) {
-            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a este recurso.");
-        }
-    }
-
     @Transactional
-    public AddressDTO addAddressToUser(Long userId, AddressDTO addressDTO) {
-        // 1. Buscamos al usuario para asociarle la dirección
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró el usuario con ID: " + userId));
+    public AddressDTO addAddress(AddressDTO addressDTO, UserDetails currentUser) {
+        User user = ((PrincipalUser) currentUser).getUser();
 
-        // 2. Creamos la nueva entidad Address a partir del DTO
         Address address = new Address();
         address.setStreet(addressDTO.street());
         address.setInternalDetails(addressDTO.internalDetails());
@@ -57,32 +38,17 @@ public class AddressService {
         address.setState(addressDTO.state());
         address.setPostalCode(addressDTO.postalCode());
         address.setCountry(addressDTO.country());
-
-        // 3. Establecemos la relación
         address.setUser(user);
 
-        // 4. Guardamos la nueva dirección
         Address savedAddress = addressRepository.save(address);
 
-        // 5. Devolvemos el DTO de la dirección guardada
         return mapToDTO(savedAddress);
     }
 
     @Transactional(readOnly = true)
-    public Page<AddressDTO> getAllAddresses(Pageable pageable) {
-        Page<Address> addressPage = addressRepository.findAll(pageable);
-        return addressPage.map(this::mapToDTO); // .map() es una función de Page para convertir el contenido
-    }
-
-    @Transactional(readOnly = true)
-    public List<AddressDTO> getAddressesByUserId(Long userId, UserDetails currentUser) {
-        // Verificamos que el usuario que pide la lista sea el dueño O un admin
-        checkOwnershipOrAdmin(userId, currentUser);
-
-        if (!userRepository.existsById(userId)) {
-            throw new CustomException(HttpStatus.NOT_FOUND, "No se encontró el usuario con ID: " + userId);
-        }
-        List<Address> addresses = addressRepository.findByUserUserId(userId);
+    public List<AddressDTO> getAddresses(UserDetails currentUser) {
+        User user = ((PrincipalUser) currentUser).getUser();
+        List<Address> addresses = addressRepository.findByUserId(user.getId());
         return addresses.stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -90,17 +56,13 @@ public class AddressService {
 
     @Transactional(readOnly = true)
     public AddressDTO getAddressById(Long addressId, UserDetails currentUser) {
-        Address address = findAddressById(addressId);
-
-        // Verificamos que el usuario que pide la dirección sea el dueño O un admin
-        checkOwnershipOrAdmin(address.getUser().getUserId(), currentUser);
-
+        Address address = getAndVerifyOwnership(addressId, currentUser);
         return mapToDTO(address);
     }
 
     @Transactional
-    public AddressDTO updateAddress(Long addressId, AddressDTO addressDTO) {
-        Address address = findAddressById(addressId);
+    public AddressDTO updateAddress(Long addressId, AddressDTO addressDTO, UserDetails currentUser) {
+        Address address = getAndVerifyOwnership(addressId, currentUser);
 
         address.setStreet(addressDTO.street());
         address.setInternalDetails(addressDTO.internalDetails());
@@ -114,8 +76,8 @@ public class AddressService {
     }
 
     @Transactional
-    public void deleteAddress(Long addressId) {
-        Address address = findAddressById(addressId);
+    public void deleteAddress(Long addressId, UserDetails currentUser) {
+        Address address = getAndVerifyOwnership(addressId, currentUser);
         addressRepository.delete(address);
     }
 
@@ -124,9 +86,22 @@ public class AddressService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró la dirección con ID: " + addressId));
     }
 
+    // Métodos de ayuda
+
+    private Address getAndVerifyOwnership(Long addressId, UserDetails currentUser) {
+        User user = ((PrincipalUser) currentUser).getUser();
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró la dirección con ID: " + addressId));
+
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a esta dirección.");
+        }
+        return address;
+    }
+
     private AddressDTO mapToDTO(Address address) {
         return new AddressDTO(
-                address.getAddressId(),
+                address.getId(),
                 address.getStreet(),
                 address.getInternalDetails(),
                 address.getCity(),
@@ -134,5 +109,13 @@ public class AddressService {
                 address.getPostalCode(),
                 address.getCountry()
         );
+    }
+
+    // --- MÉTODO PARA ADMINS ---
+
+    @Transactional(readOnly = true)
+    public Page<AddressDTO> getAllAddresses(Pageable pageable) {
+        Page<Address> addressPage = addressRepository.findAll(pageable);
+        return addressPage.map(this::mapToDTO);
     }
 }

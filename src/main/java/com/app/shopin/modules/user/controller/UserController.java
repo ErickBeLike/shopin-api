@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,7 @@ public class UserController {
     private UserService userService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<List<User>> getAllTheUsers() {
         List<User> users = userService.getAllTheUsers();
         return ResponseEntity.ok(users);
@@ -51,16 +53,19 @@ public class UserController {
     }
 
     @PutMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long userId,
             @Valid @ModelAttribute NewUserDTO newUserDTO,
-            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
+            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage,
+            @AuthenticationPrincipal UserDetails currentUser) {
         // Ya no necesitas construir el baseUrl
-        UserResponse response = userService.updateUser(userId, newUserDTO, profileImage); // Se elimina el parámetro
+        UserResponse response = userService.updateUser(userId, newUserDTO, profileImage, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{userId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Boolean>> softDeleteUser(
             @PathVariable Long userId,
             @AuthenticationPrincipal UserDetails currentUser) { // <--- Inyecta el usuario autenticado
@@ -72,42 +77,44 @@ public class UserController {
     @PatchMapping("/{userId}")
     public ResponseEntity<UserResponse> updateUserProfile(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateUserDataDTO userDataDTO) {
-
-        UserResponse response = userService.updateUserProfile(userId, userDataDTO);
+            @Valid @RequestBody UpdateUserDataDTO userDataDTO,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        UserResponse response = userService.updateUserProfile(userId, userDataDTO, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping(value = "/{userId}/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserResponse> updateUserImage(
             @PathVariable Long userId,
-            @RequestParam("profileImage") MultipartFile profileImage) {
-
-        UserResponse response = userService.updateProfileImage(userId, profileImage);
+            @RequestParam("profileImage") MultipartFile profileImage,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        UserResponse response = userService.updateProfileImage(userId, profileImage, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{userId}/profile-image")
-    public ResponseEntity<UserResponse> deleteUserImage(@PathVariable Long userId) {
-        UserResponse response = userService.deleteProfileImage(userId);
+    public ResponseEntity<UserResponse> deleteUserImage(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        UserResponse response = userService.deleteProfileImage(userId, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{userId}/username")
     public ResponseEntity<UserResponse> updateUsername(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateUsernameDTO usernameDTO) {
-
-        UserResponse response = userService.updateUsername(userId, usernameDTO);
+            @Valid @RequestBody UpdateUsernameDTO usernameDTO,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        UserResponse response = userService.updateUsername(userId, usernameDTO, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{userId}/email")
     public ResponseEntity<UserResponse> updateEmail(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateEmailDTO emailDTO) {
-
-        UserResponse response = userService.updateEmail(userId, emailDTO);
+            @Valid @RequestBody UpdateEmailDTO emailDTO,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        UserResponse response = userService.updateEmail(userId, emailDTO, currentUser);
         return ResponseEntity.ok(response);
     }
 
@@ -142,68 +149,77 @@ public class UserController {
     @PostMapping("/{userId}/2fa/app/setup")
     public ResponseEntity<SetupTwoFactorDTO> setupApp2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid PasswordConfirmationDTO dto) { // <- AHORA PIDE CONTRASEÑA
-        SetupTwoFactorDTO response = userService.setupAppTwoFactor(userId, dto);
+            @RequestBody @Valid PasswordConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        SetupTwoFactorDTO response = userService.setupAppTwoFactor(userId, dto, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{userId}/2fa/app/enable")
     public ResponseEntity<UserResponse> enableApp2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid CodeConfirmationDTO dto) {
-        UserResponse response = userService.enableAppTwoFactor(userId, dto);
+            @RequestBody @Valid CodeConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        UserResponse response = userService.enableAppTwoFactor(userId, dto, currentUser);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{userId}/2fa/app/pre-disable")
     public ResponseEntity<UserResponse> preDisableApp2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid PasswordConfirmationDTO dto) {
-        return ResponseEntity.ok(userService.preDisableAppTwoFactor(userId, dto));
+            @RequestBody @Valid PasswordConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.preDisableAppTwoFactor(userId, dto, currentUser));
     }
 
     @PostMapping("/{userId}/2fa/app/confirm-disable")
     public ResponseEntity<UserResponse> confirmDisableApp2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid CodeConfirmationDTO dto) {
-        return ResponseEntity.ok(userService.confirmDisableAppTwoFactor(userId, dto));
+            @RequestBody @Valid CodeConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.confirmDisableAppTwoFactor(userId, dto, currentUser));
     }
 
     // 2FA EMAIL SECTION
     @PostMapping("/{userId}/2fa/email/setup")
     public ResponseEntity<UserResponse> preEnableEmail2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid PasswordConfirmationDTO dto) {
-        return ResponseEntity.ok(userService.setupEmailTwoFactor(userId, dto));
+            @RequestBody @Valid PasswordConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.setupEmailTwoFactor(userId, dto, currentUser));
     }
 
     @PostMapping("/{userId}/2fa/email/enable")
     public ResponseEntity<UserResponse> confirmEnableEmail2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid CodeConfirmationDTO  dto) {
-        return ResponseEntity.ok(userService.enableEmailTwoFactor(userId, dto));
+            @RequestBody @Valid CodeConfirmationDTO  dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.enableEmailTwoFactor(userId, dto, currentUser));
     }
 
     @PostMapping("/{userId}/2fa/email/pre-disable")
     public ResponseEntity<UserResponse> preDisableEmail2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid PasswordConfirmationDTO dto) {
-        return ResponseEntity.ok(userService.preDisableEmailTwoFactor(userId, dto));
+            @RequestBody @Valid PasswordConfirmationDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.preDisableEmailTwoFactor(userId, dto, currentUser));
     }
 
     @PostMapping("/{userId}/2fa/email/confirm-disable")
     public ResponseEntity<UserResponse> confirmDisableEmail2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid CodeConfirmationDTO  dto) {
-        return ResponseEntity.ok(userService.confirmDisableEmailTwoFactor(userId, dto));
+            @RequestBody @Valid CodeConfirmationDTO  dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.confirmDisableEmailTwoFactor(userId, dto, currentUser));
     }
 
     // 2FA PREFERRED METHOD SECTION
     @PostMapping("/{userId}/2fa/set-preferred")
     public ResponseEntity<UserResponse> setPreferred2FA(
             @PathVariable Long userId,
-            @RequestBody @Valid SetPreferredTwoFactorDTO dto) {
-        return ResponseEntity.ok(userService.setPreferredTwoFactorMethod(userId, dto.method()));
+            @RequestBody @Valid SetPreferredTwoFactorDTO dto,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(userService.setPreferredTwoFactorMethod(userId, dto.method(), currentUser));
     }
 
     // UN-LINK ACCOUNT
