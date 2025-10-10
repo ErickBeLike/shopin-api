@@ -57,6 +57,10 @@ public class Product {
     @ManyToMany(mappedBy = "products")
     private Set<FavoriteList> favoriteLists = new HashSet<>();
 
+    // Cart
+    @Column
+    private Integer maxPurchaseAmount;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
     @Column
@@ -168,6 +172,14 @@ public class Product {
 
     public void setFavoriteLists(Set<FavoriteList> favoriteLists) {
         this.favoriteLists = favoriteLists;
+    }
+
+    public Integer getMaxPurchaseAmount() {
+        return maxPurchaseAmount;
+    }
+
+    public void setMaxPurchaseAmount(Integer maxPurchaseAmount) {
+        this.maxPurchaseAmount = maxPurchaseAmount;
     }
 
     public LocalDateTime getCreatedAt() {
