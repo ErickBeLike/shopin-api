@@ -31,13 +31,20 @@ public class FavoriteService {
 
     // --- LÓGICA DE CREACIÓN INICIAL ---
     @Transactional
-    public void createDefaultListForUser(User user) {
+    public void createDefaultListsForUser(User user) {
         // Se llama cuando un usuario nuevo se registra
         FavoriteList defaultList = new FavoriteList();
         defaultList.setName("Mis Favoritos");
         defaultList.setUser(user);
         defaultList.setIcon(FavoriteListIcon.HEART);
         favoriteListRepository.save(defaultList);
+
+        // Lista #2: Guardados para después
+        FavoriteList savedForLaterList = new FavoriteList();
+        savedForLaterList.setName("Guardados para después");
+        savedForLaterList.setUser(user);
+        savedForLaterList.setIcon(FavoriteListIcon.BOX);
+        favoriteListRepository.save(savedForLaterList);
     }
 
     // --- GESTIÓN DE LISTAS ---
