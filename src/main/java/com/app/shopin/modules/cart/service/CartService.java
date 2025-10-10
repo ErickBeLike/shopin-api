@@ -57,7 +57,7 @@ public class CartService {
 
     @Transactional
     public CartDTO addOrUpdateItem(AddOrUpdateCartItemDTO dto, UserDetails currentUser) {
-        Cart cart = getCartForUser(currentUser);
+        Cart cart = getAndVerifyOwnership(currentUser);
         Product product = productRepository.findById(dto.productId())
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
@@ -94,7 +94,7 @@ public class CartService {
 
     @Transactional
     public CartDTO removeItem(Long productId, UserDetails currentUser) {
-        Cart cart = getCartForUser(currentUser);
+        Cart cart = getAndVerifyOwnership(currentUser);
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
@@ -116,7 +116,7 @@ public class CartService {
 
     @Transactional
     public CartDTO clearCart(UserDetails currentUser) {
-        Cart cart = getCartForUser(currentUser);
+        Cart cart = getAndVerifyOwnership(currentUser);
         cartItemRepository.deleteAll(cart.getItems());
         cart.getItems().clear(); // Aseguramos que la lista en memoria también se limpie
         cartRepository.save(cart);
@@ -147,7 +147,7 @@ public class CartService {
     // --- MÉTODOS DE LECTURA ---
     @Transactional(readOnly = true)
     public CartDTO getCartDTOForUser(UserDetails currentUser) {
-        Cart cart = getCartForUser(currentUser);
+        Cart cart = getAndVerifyOwnership(currentUser);
         return mapEntityToDto(cart);
     }
 
@@ -160,8 +160,10 @@ public class CartService {
     }
 
     // --- MÉTODOS DE AYUDA ---
-    private Cart getCartForUser(UserDetails currentUser) {
+    private Cart getAndVerifyOwnership(UserDetails currentUser) {
         User user = ((PrincipalUser) currentUser).getUser();
+        // La consulta es la misma, solo que ahora el nombre del método es más claro
+        // y su única responsabilidad es encontrar el carrito del usuario logueado.
         return cartRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Carrito no encontrado para el usuario."));
     }

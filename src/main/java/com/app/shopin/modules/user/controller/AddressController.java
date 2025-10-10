@@ -16,38 +16,27 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/addresses")
 @CrossOrigin
 public class AddressController {
 
     @Autowired
     private AddressService addressService;
 
-    @GetMapping("/addresses")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERADMIN')")
-    public ResponseEntity<Page<AddressDTO>> getAllAddresses(Pageable pageable) {
-        Page<AddressDTO> addresses = addressService.getAllAddresses(pageable);
-        return ResponseEntity.ok(addresses);
-    }
-
-    @PostMapping("/users/{userId}/addresses")
-    public ResponseEntity<AddressDTO> addAddressToUser(
-            @PathVariable Long userId,
-            @Valid @RequestBody AddressDTO addressDTO) {
-        AddressDTO newAddress = addressService.addAddressToUser(userId, addressDTO);
+    @PostMapping("/me")
+    public ResponseEntity<AddressDTO> addAddress(
+            @Valid @RequestBody AddressDTO addressDTO,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        AddressDTO newAddress = addressService.addAddress(addressDTO, currentUser);
         return new ResponseEntity<>(newAddress, HttpStatus.CREATED);
     }
 
-    @GetMapping("/users/{userId}/addresses")
-    public ResponseEntity<List<AddressDTO>> getAddressesByUserId(
-            @PathVariable Long userId,
-            @AuthenticationPrincipal UserDetails currentUser) {
-
-        List<AddressDTO> addresses = addressService.getAddressesByUserId(userId, currentUser);
-        return ResponseEntity.ok(addresses);
+    @GetMapping("/me")
+    public ResponseEntity<List<AddressDTO>> getAddresses(@AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(addressService.getAddresses(currentUser));
     }
 
-    @GetMapping("/addresses/{addressId}")
+    @GetMapping("/{addressId}")
     public ResponseEntity<AddressDTO> getAddressById(
             @PathVariable Long addressId,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -56,17 +45,26 @@ public class AddressController {
         return ResponseEntity.ok(address);
     }
 
-    @PutMapping("/addresses/{addressId}")
+    @PutMapping("/{addressId}")
     public ResponseEntity<AddressDTO> updateAddress(
             @PathVariable Long addressId,
-            @Valid @RequestBody AddressDTO addressDTO) {
-        AddressDTO updatedAddress = addressService.updateAddress(addressId, addressDTO);
+            @Valid @RequestBody AddressDTO addressDTO,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        AddressDTO updatedAddress = addressService.updateAddress(addressId, addressDTO, currentUser);
         return ResponseEntity.ok(updatedAddress);
     }
 
-    @DeleteMapping("/addresses/{addressId}")
-    public ResponseEntity<Void> deleteAddress(@PathVariable Long addressId) {
-        addressService.deleteAddress(addressId);
+    @DeleteMapping("/{addressId}")
+    public ResponseEntity<Void> deleteAddress(
+            @PathVariable Long addressId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        addressService.deleteAddress(addressId, currentUser);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
+    public ResponseEntity<Page<AddressDTO>> getAllAddresses(Pageable pageable) {
+        return ResponseEntity.ok(addressService.getAllAddresses(pageable));
     }
 }
