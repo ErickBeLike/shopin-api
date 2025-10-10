@@ -46,7 +46,7 @@ public class FavoriteService {
         User user = ((PrincipalUser) currentUser).getUser();
 
         // Evitamos nombres de lista duplicados para el mismo usuario
-        if (favoriteListRepository.findByUserUserIdAndNameIgnoreCase(user.getUserId(), dto.name()).isPresent()) {
+        if (favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getId(), dto.name()).isPresent()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Ya tienes una lista con ese nombre.");
         }
 
@@ -100,7 +100,7 @@ public class FavoriteService {
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
         // 1. Obtenemos TODAS las listas del usuario.
-        List<FavoriteList> allUserLists = favoriteListRepository.findByUserUserId(user.getUserId());
+        List<FavoriteList> allUserLists = favoriteListRepository.findByUserId(user.getId());
 
         // 2. Iteramos sobre cada lista del usuario para sincronizar.
         for (FavoriteList list : allUserLists) {
@@ -136,7 +136,7 @@ public class FavoriteService {
     @Transactional(readOnly = true)
     public List<FavoriteListDTO> getListsForUser(UserDetails currentUser) {
         User user = ((PrincipalUser) currentUser).getUser();
-        return favoriteListRepository.findByUserUserId(user.getUserId()).stream()
+        return favoriteListRepository.findByUserId(user.getId()).stream()
                 .map(this::mapEntityToDto)
                 .collect(Collectors.toList());
     }
@@ -154,7 +154,7 @@ public class FavoriteService {
         FavoriteList list = favoriteListRepository.findById(listId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Lista de favoritos no encontrada."));
 
-        if (!list.getUser().getUserId().equals(user.getUserId())) {
+        if (!list.getUser().getId().equals(user.getId())) {
             throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a esta lista.");
         }
         return list;

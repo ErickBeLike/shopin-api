@@ -68,7 +68,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)) {
             PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
-            Long currentUserId = principal.getUser().getUserId();
+            Long currentUserId = principal.getUser().getId();
             User currentUser = userRepository.findById(currentUserId)
                     .orElseThrow(() -> new IllegalStateException("Usuario logueado no encontrado."));
 

@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface FavoriteListRepository extends JpaRepository<FavoriteList, Long> {
 
-    List<FavoriteList> findByUserUserId(Long userId);
+    List<FavoriteList> findByUserId(Long userId);
 
-    Optional<FavoriteList> findByUserUserIdAndNameIgnoreCase(Long userId, String name);
+    Optional<FavoriteList> findByUserIdAndNameIgnoreCase(Long userId, String name);
 }

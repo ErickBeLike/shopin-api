@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 public class Address {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long addressId;
+    private Long id;
 
     @Column(nullable = false, length = 200)
     private String street;
@@ -33,12 +33,12 @@ public class Address {
     @JsonIgnore // Very important! To avoid infinite loops by serializing Json
     private User user;
 
-    public Long getAddressId() {
-        return addressId;
+    public Long getId() {
+        return id;
     }
 
-    public void setAddressId(Long addressId) {
-        this.addressId = addressId;
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getStreet() {

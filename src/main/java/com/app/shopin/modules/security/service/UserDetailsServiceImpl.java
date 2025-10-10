@@ -37,7 +37,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // 3. Si se encuentra un usuario inactivo, reactívalo
         if (inactiveUser.isPresent()) {
             User userToReactivate = inactiveUser.get();
-            userRepository.reactivateUserById(userToReactivate.getUserId());
+            userRepository.reactivateUserById(userToReactivate.getId());
 
             // 4. Envía el correo de reactivación
             emailService.sendReactivationEmail(userToReactivate);

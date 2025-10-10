@@ -81,14 +81,14 @@ public class UserService {
         PrincipalUser principal = (PrincipalUser) currentUser;
         User authenticatedUser = principal.getUser();
 
-        if (!targetUserId.equals(authenticatedUser.getUserId()) && !isAdmin) {
+        if (!targetUserId.equals(authenticatedUser.getId()) && !isAdmin) {
             throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción sobre otro usuario.");
         }
     }
 
     private void checkOwnership(Long targetUserId, UserDetails currentUser) {
         PrincipalUser principal = (PrincipalUser) currentUser;
-        if (!targetUserId.equals(principal.getUser().getUserId())) {
+        if (!targetUserId.equals(principal.getUser().getId())) {
             throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
         }
     }

@@ -128,7 +128,7 @@ public class CartService {
     public void saveItemForLater(Long productId, UserDetails currentUser) {
         // 1. Buscamos la lista "Guardados para después"
         User user = ((PrincipalUser) currentUser).getUser();
-        FavoriteList savedList = favoriteListRepository.findByUserUserIdAndNameIgnoreCase(user.getUserId(), "Guardados para después")
+        FavoriteList savedList = favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getId(), "Guardados para después")
                 .orElseGet(() -> {
                     // Si no existe, la creamos usando el DTO correcto y un icono por defecto
                     CreateFavoriteListDTO newListDTO = new CreateFavoriteListDTO("Guardados para después", FavoriteListIcon.BOX);
@@ -162,7 +162,7 @@ public class CartService {
     // --- MÉTODOS DE AYUDA ---
     private Cart getCartForUser(UserDetails currentUser) {
         User user = ((PrincipalUser) currentUser).getUser();
-        return cartRepository.findByUserUserId(user.getUserId())
+        return cartRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Carrito no encontrado para el usuario."));
     }
 

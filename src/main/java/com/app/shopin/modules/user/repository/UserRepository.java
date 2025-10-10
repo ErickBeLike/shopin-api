@@ -27,7 +27,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByPasswordResetCode(String code);
 
     @Modifying
-    @Query("DELETE FROM User u WHERE u.userId = :id")
+    @Query("DELETE FROM User u WHERE u.id = :id")
     void hardDeleteById(@Param("id") Long id);
     @Query(value = "SELECT * FROM users WHERE deleted_at <= :date", nativeQuery = true)
     List<User> findUsersForPermanentDeletion(@Param("date") LocalDateTime date);
@@ -35,7 +35,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = "SELECT * FROM users WHERE (user_name = :input OR email = :input) AND deleted_at IS NOT NULL", nativeQuery = true)
     Optional<User> findInactiveByEmail(@Param("input") String input);
     @Modifying
-    @Query(value = "UPDATE users SET deleted_at = NULL WHERE user_id = :id", nativeQuery = true)
+    @Query(value = "UPDATE users SET deleted_at = NULL WHERE id = :id", nativeQuery = true)
     void reactivateUserById(@Param("id") Long id);
 }
 

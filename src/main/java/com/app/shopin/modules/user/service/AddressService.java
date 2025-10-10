@@ -38,7 +38,7 @@ public class AddressService {
         User user = principal.getUser();
 
         // Ahora la comparación funciona porque estamos comparando Long con Long
-        if (!ownerUserId.equals(user.getUserId()) && !isAdmin) {
+        if (!ownerUserId.equals(user.getId()) && !isAdmin) {
             throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a este recurso.");
         }
     }
@@ -82,7 +82,7 @@ public class AddressService {
         if (!userRepository.existsById(userId)) {
             throw new CustomException(HttpStatus.NOT_FOUND, "No se encontró el usuario con ID: " + userId);
         }
-        List<Address> addresses = addressRepository.findByUserUserId(userId);
+        List<Address> addresses = addressRepository.findByUserId(userId);
         return addresses.stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -93,7 +93,7 @@ public class AddressService {
         Address address = findAddressById(addressId);
 
         // Verificamos que el usuario que pide la dirección sea el dueño O un admin
-        checkOwnershipOrAdmin(address.getUser().getUserId(), currentUser);
+        checkOwnershipOrAdmin(address.getUser().getId(), currentUser);
 
         return mapToDTO(address);
     }
@@ -126,7 +126,7 @@ public class AddressService {
 
     private AddressDTO mapToDTO(Address address) {
         return new AddressDTO(
-                address.getAddressId(),
+                address.getId(),
                 address.getStreet(),
                 address.getInternalDetails(),
                 address.getCity(),
