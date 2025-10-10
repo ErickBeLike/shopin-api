@@ -74,25 +74,6 @@ public class UserService {
     @Autowired
     private CartService cartService;
 
-    private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
-        boolean isAdmin = currentUser.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
-
-        PrincipalUser principal = (PrincipalUser) currentUser;
-        User authenticatedUser = principal.getUser();
-
-        if (!targetUserId.equals(authenticatedUser.getId()) && !isAdmin) {
-            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción sobre otro usuario.");
-        }
-    }
-
-    private void checkOwnership(Long targetUserId, UserDetails currentUser) {
-        PrincipalUser principal = (PrincipalUser) currentUser;
-        if (!targetUserId.equals(principal.getUser().getId())) {
-            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
-        }
-    }
-
     @Transactional(readOnly = true)
     public List<User> getAllTheUsers() {
         return userRepository.findAll();
@@ -225,7 +206,9 @@ public class UserService {
     @Transactional
     public UserResponse updateUser(Long id,
                                    NewUserDTO dto,
-                                   MultipartFile profileImage) {
+                                   MultipartFile profileImage,
+                                   UserDetails currentUser) {
+        checkOwnership(id, currentUser);
 
         // 1) Traer usuario existente
         User user = findUserById(id);
@@ -358,26 +341,25 @@ public class UserService {
 
     //  METHOD FOT UPDATE USER DATA
     @Transactional
-    public UserResponse updateUserProfile(Long id, UpdateUserDataDTO dto) {
-        // 1. Buscar al usuario
+    public UserResponse updateUserProfile(Long id, UpdateUserDataDTO dto, UserDetails currentUser) {
+        checkOwnership(id, currentUser);
         User user = findUserById(id);
 
-        // 2. Actualizar los campos del perfil
         user.setFirstName(dto.firstName());
         user.setLastName(dto.lastName());
         user.setPhone(dto.phone());
 
-        // 3. Opcional pero recomendado: Invalidar tokens para refrescar la info del perfil
         user.incrementTokenVersion();
 
-        // 4. Guardar los cambios (el @PreUpdate actualizará el `updatedAt`)
         userRepository.save(user);
 
         return new UserResponse("El perfil de " + user.getUsername() + " ha sido actualizado.");
     }
 
     @Transactional
-    public UserResponse updateProfileImage(Long id, MultipartFile profileImage) {
+    public UserResponse updateProfileImage(Long id, MultipartFile profileImage, UserDetails currentUser) {
+        checkOwnership(id, currentUser);
+
         if (profileImage == null || profileImage.isEmpty()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "No se ha proporcionado una imagen.");
         }
@@ -401,7 +383,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse deleteProfileImage(Long id) {
+    public UserResponse deleteProfileImage(Long id, UserDetails currentUser) {
+        checkOwnership(id, currentUser);
+
         User user = findUserById(id);
 
         // Si hay una imagen en Cloudinary, la borramos
@@ -420,7 +404,9 @@ public class UserService {
 
     // METHOD FOR UPDATE USER USERNAME
     @Transactional
-    public UserResponse updateUsername(Long id, UpdateUsernameDTO dto) {
+    public UserResponse updateUsername(Long id, UpdateUsernameDTO dto, UserDetails currentUser) {
+        checkOwnership(id, currentUser);
+
         User user = findUserById(id);
         String newUsername = dto.userName().trim();
 
@@ -440,27 +426,24 @@ public class UserService {
 
     // METHOD FOR UPDATE USER EMAIL
     @Transactional
-    public UserResponse updateEmail(Long id, UpdateEmailDTO dto) {
-        // 1. Buscar al usuario
+    public UserResponse updateEmail(Long id, UpdateEmailDTO dto, UserDetails currentUser) {
+        checkOwnership(id, currentUser);
+
         User user = findUserById(id);
         String newEmail = dto.email().trim();
 
-        // 2. Validar si hay cambios
         if (newEmail.equalsIgnoreCase(user.getEmail())) {
             return new UserResponse("El nuevo correo es el mismo que el actual.");
         }
 
-        // 3. Validar si ya existe
         if (userRepository.existsByEmail(newEmail)) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Ese correo ya está en uso");
         }
 
-        // 4. Actualizar
         user.setEmail(newEmail);
 
-        // 5. Invalidar sesión por seguridad
         user.incrementTokenVersion();
-        // 6. Guardar
+
         userRepository.save(user);
 
         return new UserResponse("Correo electrónico actualizado, por seguridad favor de volver a autenticarse.");
@@ -472,20 +455,16 @@ public class UserService {
 
         User user = findUserById(userId);
 
-        // 1. Verificar que la contraseña antigua sea correcta
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "La contraseña actual es incorrecta.");
         }
 
-        // 2. Validar la nueva contraseña
         if (newPassword == null || newPassword.trim().isEmpty()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "La nueva contraseña no puede estar vacía.");
         }
 
-        // 3. Actualizar la contraseña
         user.setPassword(passwordEncoder.encode(newPassword));
 
-        // 4. Invalidar todas las sesiones anteriores
         user.incrementTokenVersion();
         userRepository.save(user);
 
@@ -497,22 +476,17 @@ public class UserService {
         checkOwnership(userId, currentUser);
         User user = findUserById(userId);
 
-        // 1. Verificamos que el usuario NO tenga ya una contraseña establecida.
-        // Este método es solo para la primera vez.
         if (user.isHasSetLocalPassword()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Este usuario ya tiene una contraseña. Use la función 'Cambiar Contraseña'.");
         }
 
-        // 2. Validamos y hasheamos la nueva contraseña.
         if (newPassword == null || newPassword.trim().isEmpty()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "La nueva contraseña no puede estar vacía.");
         }
         user.setPassword(passwordEncoder.encode(newPassword));
 
-        // 3. ¡Cambiamos la bandera!
         user.setHasSetLocalPassword(true);
 
-        // 4. Invalidamos otras sesiones por seguridad.
         user.incrementTokenVersion();
         userRepository.save(user);
 
@@ -532,7 +506,9 @@ public class UserService {
 
     // 2FA APP SECTION
     @Transactional
-    public SetupTwoFactorDTO setupAppTwoFactor(Long userId, PasswordConfirmationDTO dto) {
+    public SetupTwoFactorDTO setupAppTwoFactor(Long userId, PasswordConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         // 1. PRIMERO, verificar la identidad del usuario con su contraseña
         verifyUserPassword(user, dto.password());
@@ -549,7 +525,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse enableAppTwoFactor(Long userId, CodeConfirmationDTO dto) {
+    public UserResponse enableAppTwoFactor(Long userId, CodeConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         // Para este paso, ya no es necesaria la contraseña, porque ya la pidió el 'setup'.
         // El "secreto" de que el usuario ya validó su contraseña es que el campo 'twoFactorSecret' no es nulo.
@@ -571,14 +549,18 @@ public class UserService {
         return new UserResponse("La autenticación de dos factores con la aplicación ha sido habilitada exitosamente, por seguridad favor de volver a autenticarse.");
     }
 
-    public UserResponse preDisableAppTwoFactor(Long userId, PasswordConfirmationDTO dto) {
+    public UserResponse preDisableAppTwoFactor(Long userId, PasswordConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         verifyUserPassword(user, dto.password());
         return new UserResponse("Contraseña verificada. Por favor, ingrese su código de la aplicación para confirmar la desactivación.");
     }
 
     @Transactional
-    public UserResponse confirmDisableAppTwoFactor(Long userId, CodeConfirmationDTO dto) { // <- DTO Actualizado
+    public UserResponse confirmDisableAppTwoFactor(Long userId, CodeConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         if (dto.code() == null || !twoFactorService.isCodeValid(user.getTwoFactorSecret(), dto.code())) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "El código de verificación de la aplicación es incorrecto.");
@@ -598,7 +580,9 @@ public class UserService {
 
     // 2FA EMAIL SECTION
     @Transactional
-    public UserResponse setupEmailTwoFactor(Long userId, PasswordConfirmationDTO dto) {
+    public UserResponse setupEmailTwoFactor(Long userId, PasswordConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         verifyUserPassword(user, dto.password());
 
@@ -612,7 +596,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse enableEmailTwoFactor(Long userId, CodeConfirmationDTO  dto) {
+    public UserResponse enableEmailTwoFactor(Long userId, CodeConfirmationDTO  dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         if (dto.code() == null ||
                 !dto.code().equals(user.getTwoFactorEmailCode()) ||
@@ -637,7 +623,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse preDisableEmailTwoFactor(Long userId, PasswordConfirmationDTO dto) {
+    public UserResponse preDisableEmailTwoFactor(Long userId, PasswordConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         verifyUserPassword(user, dto.password());
 
@@ -651,7 +639,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse confirmDisableEmailTwoFactor(Long userId, CodeConfirmationDTO dto) { // <- DTO Actualizado
+    public UserResponse confirmDisableEmailTwoFactor(Long userId, CodeConfirmationDTO dto, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         if (dto.code() == null ||
                 !dto.code().equals(user.getTwoFactorEmailCode()) ||
@@ -674,7 +664,9 @@ public class UserService {
 
     // 2FA PREFERRED METHOD SECTION
     @Transactional
-    public UserResponse setPreferredTwoFactorMethod(Long userId, TwoFactorMethod method) {
+    public UserResponse setPreferredTwoFactorMethod(Long userId, TwoFactorMethod method, UserDetails currentUser) {
+        checkOwnership(userId, currentUser);
+
         User user = findUserById(userId);
         if (method != TwoFactorMethod.NONE &&
                 (method == TwoFactorMethod.APP && !user.isTwoFactorAppEnabled()) ||
@@ -689,32 +681,44 @@ public class UserService {
     // UN-LINk ACCOUNT
     @Transactional
     public UserResponse unlinkSocialAccount(Long userId, String provider, PasswordConfirmationDTO dto, UserDetails currentUser) {
-        // 1. Verificamos que el usuario tenga permiso para esta acción.
-        checkOwnershipOrAdmin(userId, currentUser);
+        checkOwnership(userId, currentUser);
 
         User user = findUserById(userId);
 
-        // 2. Le informamos al usuario que para administrar sus vinculaciones es necesario una contraseña otorgada por el
         if (!user.isHasSetLocalPassword()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Para gestionar tus vinculaciones, primero debes crear una contraseña para tu cuenta.");
         }
 
-        // 3. Verificamos la contraseña del usuario para confirmar la acción.
         verifyUserPassword(user, dto.password());
 
-        // 4. Buscamos y eliminamos la vinculación.
         SocialLink linkToRemove = user.getSocialLinks().stream()
                 .filter(link -> link.getProvider().equalsIgnoreCase(provider))
                 .findFirst()
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "No se encontró una vinculación con " + provider + " para este usuario."));
 
-        // Eliminamos el link de la colección y dejamos que JPA se encargue del borrado
         user.getSocialLinks().remove(linkToRemove);
 
         user.incrementTokenVersion();
-        userRepository.save(user); // Guardamos el usuario para que la relación se actualice
+        userRepository.save(user);
 
         return new UserResponse("La cuenta de " + provider + " ha sido desvinculada exitosamente, por seguridad favor de volver a autenticarse.");
     }
 
+    // --- MÉTODOS DE AYUDA DE SEGURIDAD ---
+
+    private void checkOwnershipOrAdmin(Long targetUserId, UserDetails currentUser) {
+        boolean isAdmin = currentUser.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
+        PrincipalUser principal = (PrincipalUser) currentUser;
+        if (!targetUserId.equals(principal.getUser().getId()) && !isAdmin) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción sobre otro usuario.");
+        }
+    }
+
+    private void checkOwnership(Long targetUserId, UserDetails currentUser) {
+        PrincipalUser principal = (PrincipalUser) currentUser;
+        if (!targetUserId.equals(principal.getUser().getId())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción.");
+        }
+    }
 }
