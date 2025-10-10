@@ -98,9 +98,18 @@ public class CartService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Producto no encontrado."));
 
-        // Borramos el item si existe
-        cartItemRepository.findByCartAndProduct(cart, product)
-                .ifPresent(item -> cartItemRepository.delete(item));
+        // Buscamos el item que queremos eliminar
+        Optional<CartItem> itemToRemoveOpt = cart.getItems().stream()
+                .filter(item -> item.getProduct().getId().equals(productId))
+                .findFirst();
+
+        if (itemToRemoveOpt.isPresent()) {
+            CartItem itemToRemove = itemToRemoveOpt.get();
+
+            cart.getItems().remove(itemToRemove);
+        }
+
+        cartRepository.save(cart);
 
         return getCartDTOForUser(currentUser);
     }
