@@ -1,6 +1,8 @@
 package com.app.shopin.modules.security.service;
 
+import com.app.shopin.modules.cart.service.CartService;
 import com.app.shopin.modules.exception.CustomException;
+import com.app.shopin.modules.favorites.service.FavoriteService;
 import com.app.shopin.modules.security.dto.auth.JwtDTO;
 import com.app.shopin.modules.security.dto.auth.LoginDTO;
 import com.app.shopin.modules.security.dto.auth.ValidationResponseDTO;
@@ -69,6 +71,11 @@ public class AuthService {
     private UserService userService;
     @Autowired
     private StorageService storageService;
+
+    @Autowired
+    private FavoriteService favoriteService;
+    @Autowired
+    private CartService cartService;
 
     public record TokenPair(String accessToken, String refreshToken) {}
     private final long VALIDATION_TOKEN_DURATION = 5 * 60 * 1000;
@@ -259,6 +266,9 @@ public class AuthService {
 
         // 7. Guardamos el usuario nuevo y completo
         User savedUser = userRepository.save(newUser);
+
+        favoriteService.createDefaultListsForUser(savedUser);
+        cartService.createCartForUser(savedUser);
 
         // 8. Creamos la autenticación para el nuevo usuario
         PrincipalUser principal = PrincipalUser.build(savedUser);
