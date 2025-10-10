@@ -198,7 +198,7 @@ public class UserService {
         }
 
         userRepository.save(user);
-        favoriteService.createDefaultListForUser(user);
+        favoriteService.createDefaultListsForUser(user);
         cartService.createCartForUser(user);
         return new UserResponse("Usuario " + user.getFullTag() + " ha sido creado");
     }

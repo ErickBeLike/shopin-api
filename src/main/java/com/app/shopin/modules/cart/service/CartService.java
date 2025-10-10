@@ -126,21 +126,16 @@ public class CartService {
     // --- LÓGICA PARA "GUARDAR PARA DESPUÉS" ---
     @Transactional
     public void saveItemForLater(Long productId, UserDetails currentUser) {
-        // 1. Buscamos la lista "Guardados para después"
         User user = ((PrincipalUser) currentUser).getUser();
-        FavoriteList savedList = favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getId(), "Guardados para después")
-                .orElseGet(() -> {
-                    // Si no existe, la creamos usando el DTO correcto y un icono por defecto
-                    CreateFavoriteListDTO newListDTO = new CreateFavoriteListDTO("Guardados para después", FavoriteListIcon.BOX);
-                    FavoriteListDTO createdDto = favoriteService.createList(newListDTO, currentUser);
-                    // La volvemos a buscar para tener la entidad completa
-                    return favoriteListRepository.findById(createdDto.id()).orElseThrow();
-                });
 
-        // 2. Añadimos el producto a esa lista usando nuestro nuevo método "bisturí"
+        // 1. Buscamos la lista "Guardados para después".
+        FavoriteList savedList = favoriteListRepository.findByUserIdAndNameIgnoreCase(user.getId(), "Guardados para después")
+                .orElseThrow(() -> new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "No se encontró la lista 'Guardados para después' para el usuario."));
+
+        // 2. Añadimos el producto a esa lista.
         favoriteService.addProductToSingleList(savedList.getId(), productId, currentUser);
 
-        // 3. Quitamos el producto del carrito
+        // 3. Quitamos el producto del carrito.
         removeItem(productId, currentUser);
     }
 
