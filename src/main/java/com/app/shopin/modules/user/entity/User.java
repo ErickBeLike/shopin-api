@@ -2,6 +2,7 @@ package com.app.shopin.modules.user.entity;
 
 // import com.app.shopin.entity.employee.Employee;
 import com.app.shopin.modules.favorites.entity.FavoriteList;
+import com.app.shopin.modules.payment.entity.PaymentMethod;
 import com.app.shopin.modules.security.entity.Rol;
 import com.app.shopin.modules.security.entity.SocialLink;
 import com.app.shopin.modules.security.enums.TwoFactorMethod;
@@ -11,7 +12,9 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -96,6 +99,10 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Address> addresses = new HashSet<>();
+
+    // PaymentMethods attribute
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PaymentMethod> paymentMethods = new ArrayList<>();
 
     // @OneToOne(mappedBy = "user")  // Relación bidireccional
     // private Employee employee;
@@ -230,6 +237,14 @@ public class User {
 
     public void setAddresses(Set<Address> addresses) {
         this.addresses = addresses;
+    }
+
+    public List<PaymentMethod> getPaymentMethods() {
+        return paymentMethods;
+    }
+
+    public void setPaymentMethods(List<PaymentMethod> paymentMethods) {
+        this.paymentMethods = paymentMethods;
     }
 
     public Set<FavoriteList> getFavoriteLists() {
